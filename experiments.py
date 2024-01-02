@@ -22,7 +22,7 @@ def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epoch
     model = Classifier(encoder, MLP(mode=mode, n_class=n_class, hidden=1024)).to(device)
 
     if sharpness_aware == True:
-        optimizer = optim.SGD
+        optimizer = optim.SGD()
     else:
         optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
     trainloader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)

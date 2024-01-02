@@ -1,5 +1,3 @@
-dataset_32x32
-/covertype
+dataset_32x32/
 dataset_32x32.mat
 covertype/
-ignore/
