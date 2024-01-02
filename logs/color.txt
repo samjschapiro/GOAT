@@ -10,3 +10,5 @@ seed7with1gt2generated,23.6,25.85,23.6,50.55,69.35
 seed8with1gt2generated,11.0,20.0,11.0,24.4,58.15
 seed9with1gt2generated,42.15,43.1,42.15,65.95,86.25
 seed10with1gt2generated,25.95,29.6,25.95,39.5,45.1
+seed11with1gt2generated,34.8,10.0,34.8,9.4,83.05
+seed12with1gt2generated,30.4,33.4,30.4,39.5,81.55
