@@ -1,0 +1,11 @@
+trial,direct_accuracy, self_train_accuracy, gradual_direct_accuracy, gradual_self_train_accuracy, generated_accuracy
+seed3with1gt2generated,38.65,54.65,38.65,52.15,73.55
+seed0with1gt2generated,33.55,46.65,33.55,45.35,37.3
+seed1with1gt2generated,42.1,51.05,42.1,47.0,64.5
+seed2with1gt2generated,24.25,54.35,24.25,54.5,61.7
+seed4with1gt2generated,43.35,34.8,43.35,48.1,66.95
+seed5with1gt2generated,39.7,57.45,39.7,40.75,54.3
+seed6with1gt2generated,40.7,44.75,40.7,51.35,66.4
+seed7with1gt2generated,30.15,38.3,30.15,45.3,64.7
+seed8with1gt2generated,44.6,53.25,44.6,56.55,71.6
+seed9with1gt2generated,39.7,55.85,39.7,52.85,76.9

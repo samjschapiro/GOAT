@@ -34,23 +34,32 @@ def calculate_modal_val_accuracy(model, valloader):
 
 
 def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=False, verbose=True, sharpness_aware=True):
-    def closure():
-        if vae:
-            recon_batch, mu, log_var = model(data)
-            loss = loss_function(recon_batch, data, mu, log_var)
-        else:
-            output = model(data)
-            if len(x) == 2:
-                loss = F.cross_entropy(output.clone(), labels)
-            elif len(x) == 3:
-                criterion = nn.CrossEntropyLoss(reduction='none')
-                loss = criterion(output.clone(), labels)
-                loss = (loss * weight).mean()
-        loss.backward()
-        return loss
+    # def closure():
+    #     if vae:
+    #         recon_batch, mu, log_var = model(data)
+    #         loss = loss_function(recon_batch, data, mu, log_var)
+    #     else:
+    #         output = model(data)
+    #         if len(x) == 2:
+    #             loss = F.cross_entropy(output.clone(), labels)
+    #         elif len(x) == 3:
+    #             criterion = nn.CrossEntropyLoss(reduction='none')
+    #             loss = criterion(output.clone(), labels)
+    #             loss = (loss * weight).mean()
+    #     loss.backward()
+    #     return loss
     
+    def enable_bn(model):
+        if isinstance(model, nn.BatchNorm1d):
+            model.backup_momentum = model.momentum
+            model.momentum = 0
+        
+    def disable_bn(model):
+        if isinstance(model, nn.BatchNorm1d):
+            model.momentum = model.backup_momentum
+
     if sharpness_aware == True:
-        optimizer = SAM(model.parameters(), base_optimizer, lr=0.1, momentum=0.9)
+        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3)
 
     model.train()
     train_loss = 0
@@ -63,28 +72,64 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
 
         data = data.to(device)
         labels = labels.to(device)
-        if sharpness_aware == False:
-            base_optimizer.zero_grad()
 
         #Could the issue be related to batch norm?
 
-        if vae:
-            recon_batch, mu, log_var = model(data)
-            loss = loss_function(recon_batch, data, mu, log_var)
-        else:
-            output = model(data)
-            if len(x) == 2:
-                loss = F.cross_entropy(output.clone(), labels)
-            elif len(x) == 3:
-                criterion = nn.CrossEntropyLoss(reduction='none')
-                loss = criterion(output.clone(), labels)
-                loss = (loss * weight).mean()
+        # if vae:
+        #     recon_batch, mu, log_var = model(data)
+        #     loss = loss_function(recon_batch, data, mu, log_var)
+        # else:
+        #     output = model(data)
+        #     if len(x) == 2:
+        #         loss = F.cross_entropy(output.clone(), labels)
+        #     elif len(x) == 3:
+        #         criterion = nn.CrossEntropyLoss(reduction='none')
+        #         loss = criterion(output.clone(), labels)
+        #         loss = (loss * weight).mean()
 
         if sharpness_aware == True:
-            loss.backward()
-            optimizer.step(closure)
-            optimizer.zero_grad()
+            # loss.backward()
+            # optimizer.step(closure)
+            # optimizer.zero_grad()
+            enable_bn(model)
+            if vae:
+                recon_batch, mu, log_var = model(data)
+                loss = loss_function(recon_batch, data, mu, log_var)
+            else:
+                output = model(data)
+                if len(x) == 2:
+                    loss = F.cross_entropy(output, labels).backward()
+                elif len(x) == 3:
+                    criterion = nn.CrossEntropyLoss(reduction='none')
+                    loss = criterion(output, labels)
+                    loss = (loss * weight).mean().backward()
+            
+            optimizer.first_step(zero_grad=True)
+                
+            disable_bn(model)
+            if vae:
+                loss_function(model(data)[0], data, model(data)[1], model(data)[2])
+            else:
+                if len(x) == 2:
+                    F.cross_entropy(model(data), labels).backward()
+                elif len(x) == 3:
+                    criterion = nn.CrossEntropyLoss(reduction='none')
+                    (criterion(model(data), labels)  * weight).mean().backward()
+            optimizer.second_step(zero_grad=True)
+
         else:
+            base_optimizer.zero_grad()
+            if vae:
+                recon_batch, mu, log_var = model(data)
+                loss = loss_function(recon_batch, data, mu, log_var)
+            else:
+                output = model(data)
+                if len(x) == 2:
+                    loss = F.cross_entropy(output, labels)
+                elif len(x) == 3:
+                    criterion = nn.CrossEntropyLoss(reduction='none')
+                    loss = criterion(output, labels)
+                    loss = (loss * weight).mean()
             loss.backward()
             train_loss += loss.item()
             base_optimizer.step()

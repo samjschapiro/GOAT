@@ -1,6 +1,0 @@
-seed0with1gt2generated,58.95,10.45,58.95,81.4,91.75
-seed0with1gt2generated,30.7,33.25,30.7,30.3,38.6
-seed1with1gt2generated,48.05,29.95,48.05,79.4,41.15
-seed0with1gt2generated,41.8,41.05,41.8,11.25,84.1
-seed2with1gt2generated,70.4,63.65,70.4,92.75,89.55
-seed2with1gt2generated,27.15,10.2,27.15,41.5,87.15

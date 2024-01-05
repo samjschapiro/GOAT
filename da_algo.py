@@ -32,7 +32,6 @@ def get_pseudo_labels(dataloader, model, confidence_q=0.1):
 
 
 def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True):
-    # THIS IS WHERE THE ERROR IS
     steps = len(datasets)
     teacher = source_model
     targetset = datasets[-1]
@@ -69,11 +68,11 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True):
         else:
             optimizer = optim.Adam(student.parameters(), lr=args.lr, weight_decay=1e-4)
 
+        # THIS IS WHERE THE ERROR IS
         for i in range(1, epochs+1):
             train(i, trainloader, student, base_optimizer=optimizer, sharpness_aware=sharpness_aware)
             if i % 5 == 0:
                  test(targetloader, student)
-        student.parameters()
 
         print("------------Performance on the current domain----------")
         test(trainloader, student)
