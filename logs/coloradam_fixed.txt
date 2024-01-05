@@ -1,0 +1,10 @@
+seed0with1gt2generated,13.2,12.65,13.2,23.0,40.7
+seed1with1gt2generated,12.5,16.8,12.5,16.75,67.15
+seed2with1gt2generated,58.5,60.7,58.5,62.0,80.35
+seed3with1gt2generated,44.55,46.95,44.55,53.55,42.65
+seed4with1gt2generated,15.65,19.0,15.65,30.75,52.2
+seed5with1gt2generated,27.0,28.85,27.0,45.35,86.8
+seed6with1gt2generated,30.15,33.4,30.15,34.05,62.0
+seed7with1gt2generated,28.45,30.15,28.45,30.85,80.95
+seed8with1gt2generated,27.05,27.85,27.05,31.5,68.15
+seed9with1gt2generated,18.25,18.5,18.25,24.95,59.65

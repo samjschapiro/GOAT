@@ -1,13 +1,15 @@
-def representation_shift() -> float:
+import numpy as np
+
+def representation_shift(weights_1, weights_2) -> float:
     """
     Computes l_2 norm between representations in domain 't' and representations in domain 't+1'
     """
-    pass
+    return np.linalg.norm(weights_1, weights_2, 2)
 
 
 def sharpness() -> float:
     """
-    Computes sharpness
+    Computes sharpness (TODO: find library with existing computation)
     """
     pass
 

@@ -25,6 +25,7 @@ def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epoch
         optimizer = optim.SGD
     else:
         optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
+
     trainloader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     testloader = DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 

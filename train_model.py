@@ -66,16 +66,18 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
         if sharpness_aware == False:
             base_optimizer.zero_grad()
 
+        #Could the issue be related to batch norm?
+
         if vae:
             recon_batch, mu, log_var = model(data)
             loss = loss_function(recon_batch, data, mu, log_var)
         else:
             output = model(data)
             if len(x) == 2:
-                loss = F.cross_entropy(output, labels)
+                loss = F.cross_entropy(output.clone(), labels)
             elif len(x) == 3:
                 criterion = nn.CrossEntropyLoss(reduction='none')
-                loss = criterion(output, labels)
+                loss = criterion(output.clone(), labels)
                 loss = (loss * weight).mean()
 
         if sharpness_aware == True:
