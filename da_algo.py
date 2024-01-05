@@ -31,6 +31,13 @@ def get_pseudo_labels(dataloader, model, confidence_q=0.1):
     return labels.cpu().detach().type(torch.int64), list(indices.detach().numpy())
 
 
+def supervised_train():
+    """
+    todo
+    """
+    pass
+
+
 def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True):
     steps = len(datasets)
     teacher = source_model
