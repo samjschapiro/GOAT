@@ -10,35 +10,41 @@ import copy
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def get_pseudo_labels(dataloader, model, confidence_q=0.1):
+def get_labels(dataloader, model, confidence_q=0.1):
+    # TODO: modify this function to returtn actual labels in the case of supervised
     logits = []
     model.eval()
+    labels_sup = []
     with torch.no_grad():
         for x in dataloader:
+            # if supervised == False:
             if len(x) == 3:
                 data, _, _ = x
             else:
                 data, _ = x
             data = data.to(device)
             logits.append(model(data))
+            # else:
+            #     if len(x) == 3:
+            #         _, label, _ = x
+            #     else:
+            #         _, label = x
+            #     labels_sup.append(label)
     
+    # if supervised == False:
     logits = torch.cat(logits)
     confidence = torch.max(logits, dim=1)[0] - torch.min(logits, dim=1)[0]
     alpha = torch.quantile(confidence, confidence_q)
     indices = torch.where(confidence >= alpha)[0].to("cpu")
     labels = torch.argmax(logits, axis=1) #[indices]
-    
     return labels.cpu().detach().type(torch.int64), list(indices.detach().numpy())
+    # else:
+    #     labels_sup = torch.cat(labels_sup)
+    #     print(labels_sup)
+    #     return labels_sup.cpu().detach().type(torch.int64), None
 
 
-def supervised_train():
-    """
-    todo
-    """
-    pass
-
-
-def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True):
+def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, supervised=True):
     steps = len(datasets)
     teacher = source_model
     targetset = datasets[-1]
@@ -54,19 +60,27 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True):
         ogloader = DataLoader(trainset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
                 
         test(targetloader, teacher)
-        train_labs, train_idx = get_pseudo_labels(ogloader, teacher)
+        if supervised == False:
+            train_labs, train_idx = get_labels(ogloader, teacher)
 
-        if torch.is_tensor(trainset.data):
-            data = trainset.data.cpu().detach().numpy()
+            if torch.is_tensor(trainset.data):
+                data = trainset.data.cpu().detach().numpy()
+            else:
+                data = trainset.data
+            trainset  = EncodeDataset(data, train_labs, trainset.transform)
+            
+            # filter out the least 10% confident data
+            filter_trainset = Subset(trainset, train_idx)
+            print("Trainset size: " + str(len(filter_trainset)))
+
+            trainloader =  DataLoader(filter_trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         else:
-            data = trainset.data
-        trainset  = EncodeDataset(data, train_labs, trainset.transform)
-        
-        # filter out the least 10% confident data
-        filter_trainset = Subset(trainset, train_idx)
-        print("Trainset size: " + str(len(filter_trainset)))
-
-        trainloader =  DataLoader(filter_trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+            if torch.is_tensor(trainset.data):
+                data = trainset.data.cpu().detach().numpy()
+            else:
+                data = trainset.data
+            labels = ogloader.
+            trainset = EncodeDataset(data, labels, trainset.transform)
 
         # initialize and train student model
         student = copy.deepcopy(teacher)
@@ -75,14 +89,19 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True):
         else:
             optimizer = optim.Adam(student.parameters(), lr=args.lr, weight_decay=1e-4)
 
-        # THIS IS WHERE THE ERROR IS
         for i in range(1, epochs+1):
-            train(i, trainloader, student, base_optimizer=optimizer, sharpness_aware=sharpness_aware)
+            if supervised == False:
+                train(i, trainloader, student, base_optimizer=optimizer, sharpness_aware=sharpness_aware) # Current error occurs here
+            else:
+                train(i, ogloader, student, base_optimizer=optimizer, sharpness_aware=sharpness_aware)
             if i % 5 == 0:
-                 test(targetloader, student)
+                test(targetloader, student)
 
         print("------------Performance on the current domain----------")
-        test(trainloader, student)
+        if supervised == False:
+            test(trainloader, student)
+        else:
+            test(ogloader, student)
 
         # test on the target domain
         print("------------Performance on the target domain----------")
