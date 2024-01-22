@@ -1,0 +1,37 @@
+import torch
+
+
+def compute_sharpness(model_, perturbations, data):
+    """ Given a model and the first-order optimal perturbations from the final batch, computes the sharpness of the model,
+    where sharpness is defined as
+    $ S^\rho(\theta) := \max_{\| \beta \|_2 \le \rho} \mathcal{E}(\theta + \beta) - \mathcal{E}(\theta) $
+    """
+    model = model_.copy()
+    model.eval()
+
+    # Convert perturbations and data to tensors
+    perturbations = torch.tensor(perturbations)
+    data = torch.tensor(data)
+
+    # Ensure both perturbations and data are on the same device as the model
+    perturbations = perturbations.to(next(model.parameters()).device)
+    data = data.to(next(model.parameters()).device)
+
+    # Get model outputs before perturbation
+    outputs_bef = model(data)
+
+    # Perturb model
+    for _, param in model:
+        # TODO: add perturbation
+
+    # Get model outputs after perturbation
+    outputs_aft = model(data)
+
+
+
+
+def compute_sharpness_sgd(model, perturbations, data):
+    """ Gonna be harder...
+    
+    """
+    pass

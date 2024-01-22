@@ -63,6 +63,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
 
     model.train()
     train_loss = 0
+    final_sharpness = 0
     for _, x in enumerate(train_loader):
         if len(x) == 2:
             data, labels = x
@@ -73,7 +74,6 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
         data = data.to(device)
         labels = labels.to(device)
 
-        #Could the issue be related to batch norm?
 
         # if vae:
         #     recon_batch, mu, log_var = model(data)
@@ -104,7 +104,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
                     loss = criterion(output, labels)
                     loss = (loss * weight).mean().backward()
             
-            optimizer.first_step(zero_grad=True)
+            final_sharpness = optimizer.first_step(zero_grad=True)
                 
             disable_bn(model)
             if vae:
@@ -140,6 +140,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
     if verbose:
         print('====> Epoch: {} Average loss: {:.8f}'.format(epoch, train_loss / len(train_loader.dataset)))
 
+    return final_sharpness
 
 def test(val_loader, model, vae=False, verbose=True):
     model.eval()
