@@ -4,7 +4,7 @@ import numpy.linalg as la
 
 
 class SAM(torch.optim.Optimizer):
-    def __init__(self, params, base_optimizer, rho=0.05, adaptive=False, **kwargs):
+    def __init__(self, params, base_optimizer, rho=0.15, adaptive=False, **kwargs):
         assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
 
         defaults = dict(rho=rho, adaptive=adaptive, **kwargs)
@@ -13,7 +13,7 @@ class SAM(torch.optim.Optimizer):
         self.base_optimizer = base_optimizer(self.param_groups, **kwargs)
         self.param_groups = self.base_optimizer.param_groups
         self.defaults.update(self.base_optimizer.defaults)
-        self.sharpness = {} # NEW
+        self.perturbations = {} # NEW
 
     @torch.no_grad()
     def first_step(self, zero_grad=False):
@@ -25,9 +25,9 @@ class SAM(torch.optim.Optimizer):
                 if p.grad is None: continue
                 self.state[p]["old_p"] = p.data.clone()
                 e_w = (torch.pow(p, 2) if group["adaptive"] else 1.0) * p.grad * scale.to(p) # need to find a way to save e_w
-                # if p not in self.sharpness:
-                #     self.sharpness[str(p)] = []
-                # self.sharpness[str(p)].append(la.norm(torch.flatten(e_w).cpu().detach() - torch.flatten(self.state[p]["old_p"]).cpu().detach(), 2))
+                if p not in self.perturbations:
+                    self.perturbations[str(p)] = []
+                self.perturbations[str(p)].append(la.norm(torch.flatten(e_w).cpu().detach() - torch.flatten(self.state[p]["old_p"]).cpu().detach(), 2))
                 p.add_(e_w)  # climb to the local maximum "w + e(w)"
 
         if zero_grad: self.zero_grad()

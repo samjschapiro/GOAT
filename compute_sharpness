@@ -1,10 +1,11 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def compute_sharpness(model_, perturbations, data):
-    """ Given a model and the first-order optimal perturbations from the final batch, computes the sharpness of the model,
-    where sharpness is defined as
-    $ S^\rho(\theta) := \max_{\| \beta \|_2 \le \rho} \mathcal{E}(\theta + \beta) - \mathcal{E}(\theta) $
+def compute_sharpness(model_, perturbations, data, labels, weights=None):
+    """ Given a model and the first-order optimal perturbations from the final batch, computes the sharpness of the model.
     """
     model = model_.copy()
     model.eval()
@@ -21,14 +22,29 @@ def compute_sharpness(model_, perturbations, data):
     outputs_bef = model(data)
 
     # Perturb model
-    for _, param in model:
-        # TODO: add perturbation
+    for name, param in model:
+        param.add_(perturbations[name])
 
     # Get model outputs after perturbation
     outputs_aft = model(data)
 
+    # Compute difference in loss
+    if weights == None:
+        loss = F.cross_entropy(outputs_bef, labels)
+    else:
+        criterion = nn.CrossEntropyLoss(reduction='none')
+        loss = criterion(outputs_bef, labels)
+        loss = (loss * weights).mean()
 
+    # Compute difference in loss
+    if weights == None:
+        loss_aft = F.cross_entropy(outputs_aft, labels)
+    else:
+        criterion = nn.CrossEntropyLoss(reduction='none')
+        loss_aft = criterion(outputs_aft, labels)
+        loss_aft = (loss_aft * weights).mean()
 
+    return loss - loss_aft
 
 def compute_sharpness_sgd(model, perturbations, data):
     """ Gonna be harder...
