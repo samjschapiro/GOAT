@@ -10,11 +10,9 @@ import copy
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def get_labels(dataloader, model, confidence_q=0.1, supervised=False):
-    # TODO: modify this function to returtn actual labels in the case of supervised
+def get_labels(dataloader, model, confidence_q=0.1):
     logits = []
     model.eval()
-    labels_sup = []
     with torch.no_grad():
         for x in dataloader:
             if len(x) == 2:
@@ -24,24 +22,15 @@ def get_labels(dataloader, model, confidence_q=0.1, supervised=False):
                 weight = weight.to(device)
             data = data.to(device)
             labels = labels.to(device)
-            if not supervised:
-                logits.append(model(data))
-            else:
-                labels_sup.append(labels)
+            logits.append(model(data))
     
-    if supervised == False:
-        logits = torch.cat(logits)
-        confidence = torch.max(logits, dim=1)[0] - torch.min(logits, dim=1)[0]
-        alpha = torch.quantile(confidence, confidence_q)
-        indices = torch.where(confidence >= alpha)[0].to("cpu")
-        labels = torch.argmax(logits, axis=1) #[indices]
-        print(labels) # 0-9 (normal)
-        return labels.cpu().detach().type(torch.int64), list(indices.detach().numpy())
-    else:
-        labels_sup = torch.cat(labels_sup)
-        print(labels_sup) # all -1
-        return labels_sup.cpu().detach().type(torch.int64), None
 
+    logits = torch.cat(logits)
+    confidence = torch.max(logits, dim=1)[0] - torch.min(logits, dim=1)[0]
+    alpha = torch.quantile(confidence, confidence_q)
+    indices = torch.where(confidence >= alpha)[0].to("cpu")
+    labels = torch.argmax(logits, axis=1) #[indices]
+    return labels.cpu().detach().type(torch.int64), list(indices.detach().numpy())
 
 def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, supervised=False):
     steps = len(datasets)
@@ -64,7 +53,7 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
         ogloader = DataLoader(trainset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
                 
         test(targetloader, teacher)
-        train_labs, train_idx = get_labels(ogloader, teacher, supervised=supervised)
+        train_labs, train_idx = get_labels(ogloader, teacher)
 
         if torch.is_tensor(trainset.data):
             data = trainset.data.cpu().detach().numpy()
@@ -92,6 +81,8 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
             if i % 5 == 0:
                 test(targetloader, student)
 
+        sharpnesses.append(final_sharpness.cpu().detach().numpy())
+
         print("------------Performance on the current domain----------")
 
         test(trainloader, student)
@@ -113,8 +104,7 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
 
         teacher = copy.deepcopy(student)
 
-        #print(final_sharpness)
-        # TODO: compute sharpness of model
+        print('SHARPNESS', final_sharpness)
         rep_weight = None
         rep_bias = None
         for name, param in teacher.named_parameters():
@@ -131,5 +121,5 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
         bias_diff = np.linalg.norm(representation_biases[idx] - representation_biases[idx+1], 2)
         representation_shifts.append(weight_diff + bias_diff)
 
-    return direct_acc, st_acc, representation_shifts
+    return direct_acc, st_acc, representation_shifts, sharpnesses
 

@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 from sam import SAM
+import copy
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -34,21 +36,6 @@ def calculate_modal_val_accuracy(model, valloader):
 
 
 def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=False, verbose=True, sharpness_aware=True):
-    # def closure():
-    #     if vae:
-    #         recon_batch, mu, log_var = model(data)
-    #         loss = loss_function(recon_batch, data, mu, log_var)
-    #     else:
-    #         output = model(data)
-    #         if len(x) == 2:
-    #             loss = F.cross_entropy(output.clone(), labels)
-    #         elif len(x) == 3:
-    #             criterion = nn.CrossEntropyLoss(reduction='none')
-    #             loss = criterion(output.clone(), labels)
-    #             loss = (loss * weight).mean()
-    #     loss.backward()
-    #     return loss
-    
     def enable_bn(model):
         if isinstance(model, nn.BatchNorm1d):
             model.backup_momentum = model.momentum
@@ -63,7 +50,6 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
 
     model.train()
     train_loss = 0
-    final_sharpness = 0
     idx = 0
     for _, x in enumerate(train_loader):
         if len(x) == 2:
@@ -74,24 +60,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
 
         data = data.to(device)
         labels = labels.to(device)
-
-
-        # if vae:
-        #     recon_batch, mu, log_var = model(data)
-        #     loss = loss_function(recon_batch, data, mu, log_var)
-        # else:
-        #     output = model(data)
-        #     if len(x) == 2:
-        #         loss = F.cross_entropy(output.clone(), labels)
-        #     elif len(x) == 3:
-        #         criterion = nn.CrossEntropyLoss(reduction='none')
-        #         loss = criterion(output.clone(), labels)
-        #         loss = (loss * weight).mean()
-
         if sharpness_aware == True:
-            # loss.backward()
-            # optimizer.step(closure)
-            # optimizer.zero_grad()
             enable_bn(model)
             if vae:
                 recon_batch, mu, log_var = model(data)
@@ -99,11 +68,12 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
             else:
                 output = model(data)
                 if len(x) == 2:
-                    loss = F.cross_entropy(output, labels).backward()
+                    loss = F.cross_entropy(output, labels)
+                    loss.backward()
                 elif len(x) == 3:
                     criterion = nn.CrossEntropyLoss(reduction='none')
                     loss = criterion(output, labels)
-                    loss = (loss * weight).mean().backward()
+                    (loss * weight).mean().backward()
             
             optimizer.first_step(zero_grad=True)
                 
@@ -115,40 +85,12 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
                     F.cross_entropy(model(data), labels).backward()
                 elif len(x) == 3:
                     criterion = nn.CrossEntropyLoss(reduction='none')
-                    (criterion(model(data), labels)  * weight).mean().backward()
+                    (criterion(model(data), labels) * weight).mean().backward()
             optimizer.second_step(zero_grad=True)
-
             solution_loss = loss
 
             # TODO: Write code to get final sharpness
-            if idx == len(train_loader['train'].dataset) / len(data):
-                model_copy = model.copy()
-                enable_bn(model_copy)
-                if vae:
-                    recon_batch, mu, log_var = model_copy(data)
-                    loss = loss_function(recon_batch, data, mu, log_var)
-                else:
-                    output = model_copy(data)
-                    if len(x) == 2:
-                        loss = F.cross_entropy(output, labels).backward()
-                    elif len(x) == 3:
-                        criterion = nn.CrossEntropyLoss(reduction='none')
-                        loss = criterion(output, labels)
-                        loss = (loss * weight).mean().backward()
-    
-                optimizer.first_step(zero_grad=True)
-
-                if vae:
-                    recon_batch, mu, log_var = model_copy(data)
-                    perturbed_loss = loss_function(recon_batch, data, mu, log_var)
-                else:
-                    output = model_copy(data)
-                    if len(x) == 2:
-                        perturbed_loss = F.cross_entropy(output, labels).backward()
-                    elif len(x) == 3:
-                        criterion = nn.CrossEntropyLoss(reduction='none')
-                        perturbed_loss = criterion(output, labels)
-                        perturbed_loss = (perturbed_loss * weight).mean().backward()
+           
 
         else:
             # TODO: Figure out a way to do this with Adam. Current idea below:
@@ -167,13 +109,73 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
                     criterion = nn.CrossEntropyLoss(reduction='none')
                     loss = criterion(output, labels)
                     loss = (loss * weight).mean()
+            solution_loss = loss
             loss.backward()
             train_loss += loss.item()
             base_optimizer.step()
-
         if lr_scheduler is not None:
             lr_scheduler.step()
-        idx +=1
+
+    # SHARPNESS
+    if sharpness_aware == True:
+        final_lr = optimizer.param_groups[0]['lr']
+        enable_bn(model)
+        model_copy = copy.deepcopy(model).to(device)
+        optimizer = SAM(model_copy.parameters(), base_optimizer, lr=final_lr)
+        if vae:
+            recon_batch, mu, log_var = model_copy(data)
+            loss = loss_function(recon_batch, data, mu, log_var)
+        else:
+            output = model_copy(data)
+            if len(x) == 2:
+                loss = F.cross_entropy(output, labels).backward()
+            elif len(x) == 3:
+                criterion = nn.CrossEntropyLoss(reduction='none')
+                loss = criterion(output, labels)
+                (loss * weight).mean().backward()
+        optimizer.first_step(zero_grad=True)
+        if vae:
+            recon_batch, mu, log_var = model_copy(data)
+            perturbed_loss = loss_function(recon_batch, data, mu, log_var)
+        else:
+            output = model_copy(data)
+            if len(x) == 2:
+                perturbed_loss = F.cross_entropy(output, labels)
+                perturbed_loss.backward()
+            elif len(x) == 3:
+                criterion = nn.CrossEntropyLoss(reduction='none')
+                perturbed_loss = criterion(output, labels)
+                (perturbed_loss * weight).mean().backward()
+    else:
+        final_lr = base_optimizer.param_groups[0]['lr']
+        model_copy = copy.deepcopy(model).to(device)
+        base_optimizer_ = optim.SGD
+        optimizer = SAM(model_copy.parameters(), base_optimizer_, lr=final_lr)
+        if vae:
+            recon_batch, mu, log_var = model_copy(data)
+            loss = loss_function(recon_batch, data, mu, log_var)
+        else:
+            output = model_copy(data)
+            if len(x) == 2:
+                loss = F.cross_entropy(output, labels).backward()
+            elif len(x) == 3:
+                criterion = nn.CrossEntropyLoss(reduction='none')
+                loss = criterion(output, labels)
+                (loss * weight).mean().backward()
+        optimizer.first_step(zero_grad=True)
+        if vae:
+            recon_batch, mu, log_var = model_copy(data)
+            perturbed_loss = loss_function(recon_batch, data, mu, log_var)
+        else:
+            output = model_copy(data)
+            if len(x) == 2:
+                perturbed_loss = F.cross_entropy(output, labels)
+                perturbed_loss.backward()
+            elif len(x) == 3:
+                criterion = nn.CrossEntropyLoss(reduction='none')
+                perturbed_loss = criterion(output, labels)
+                (perturbed_loss * weight).mean().backward()
+
     if verbose:
         print('====> Epoch: {} Average loss: {:.8f}'.format(epoch, train_loss / len(train_loader.dataset)))
 
