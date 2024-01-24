@@ -103,8 +103,6 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
             representation_biases.append(rep_bias)
 
         teacher = copy.deepcopy(student)
-
-        print('SHARPNESS', final_sharpness)
         rep_weight = None
         rep_bias = None
         for name, param in teacher.named_parameters():
@@ -116,10 +114,13 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
         representation_biases.append(rep_bias)
     
     representation_shifts = []
+    representation_norms = []
+    representation_norms.append((np.linalg.norm(representation_weights[0], 2) + np.linalg.norm(representation_biases[0]))**2)
     for idx in range(len(representation_weights)-1):
         weight_diff = np.linalg.norm(representation_weights[idx] - representation_weights[idx+1], 2)
         bias_diff = np.linalg.norm(representation_biases[idx] - representation_biases[idx+1], 2)
         representation_shifts.append(weight_diff + bias_diff)
+        representation_norms.append((np.linalg.norm(representation_weights[idx+1], 2) + np.linalg.norm(representation_biases[idx+1]))**2)
 
-    return direct_acc, st_acc, representation_shifts, sharpnesses
+    return direct_acc, st_acc, representation_shifts, sharpnesses, np.mean(representation_norms)
 
