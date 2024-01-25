@@ -86,7 +86,7 @@ def run_mnist_experiment(target, gt_domains, generated_domains, sharpness_aware=
     direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=5, sharpness_aware=sharpness_aware)
 
     elapsed = round(time.time() - t, 2)
-    print(elapsed)
+    # print(elapsed)
     with open(f"logs/mnist_{target}_{gt_domains}_layer.txt", "a") as f:
         f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
 
@@ -177,11 +177,11 @@ def run_portraits_experiment(gt_domains, generated_domains, sharpness_aware=True
     all_sets = get_domains(gt_domains)
     all_sets.append(tgt_trainset)
     
-    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=5, sharpness_aware=sharpness_aware)
+    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=10, sharpness_aware=sharpness_aware)
 
     elapsed = round(time.time() - t, 2)
     with open(f"logs/portraits_exp_time.txt", "a") as f:
-        f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)}\n")
+        f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
 
 
 def run_covtype_experiment(gt_domains, generated_domains, sharpness_aware=True):
@@ -211,10 +211,10 @@ def run_covtype_experiment(gt_domains, generated_domains, sharpness_aware=True):
     all_sets = get_domains(gt_domains)
     all_sets.append(tgt_trainset)
 
-    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=5, sharpness_aware=sharpness_aware)
+    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=10, sharpness_aware=sharpness_aware)
 
     with open(f"logs/covtype_exp_{args.log_file}.txt", "a") as f:
-            f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)}\n")
+        f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
 
 
 def run_color_mnist_experiment(gt_domains, generated_domains, sharpness_aware=True):
