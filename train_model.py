@@ -88,15 +88,8 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
                     (criterion(model(data), labels) * weight).mean().backward()
             optimizer.second_step(zero_grad=True)
             solution_loss = loss
-
-            # TODO: Write code to get final sharpness
-           
-
+        
         else:
-            # TODO: Figure out a way to do this with Adam. Current idea below:
-            #   If at the end of training:
-            #       Create a copy of the model, instantiate a SAM optimizer.
-            #       Use above code to compute sharpness.
             base_optimizer.zero_grad()
             if vae:
                 recon_batch, mu, log_var = model(data)
