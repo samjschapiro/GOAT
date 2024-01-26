@@ -13,7 +13,7 @@ import random
 import torch.backends.cudnn as cudnn
 import time
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 
 def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epochs=50, verbose=True, sharpness_aware=True):

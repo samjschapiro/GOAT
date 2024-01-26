@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from sam import SAM
 import copy
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 
 # return reconstruction error + KL divergence losses
