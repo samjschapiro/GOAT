@@ -46,7 +46,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
             model.momentum = model.backup_momentum
 
     if sharpness_aware == True:
-        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3)
+        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4)
 
     model.train()
     train_loss = 0

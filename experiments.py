@@ -65,90 +65,6 @@ def run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, gen
     
     return direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, np.mean(st_sharpnesses), np.mean(st_sharpnesses_all), np.mean(rep_norm), np.mean(rep_norm_all)
 
-
-def run_mnist_experiment(target, gt_domains, generated_domains, sharpness_aware=True):
-
-    t = time.time()
-
-    src_trainset, tgt_trainset = get_single_rotate(False, 0), get_single_rotate(False, target)
-
-    encoder = ENCODER().to(device)
-    source_model = get_source_model(args, src_trainset, src_trainset, 10, "mnist", encoder=encoder, epochs=5, sharpness_aware=sharpness_aware)
-    model_copy = copy.deepcopy(source_model)
-
-    all_sets = []
-    for i in range(1, gt_domains+1):
-        all_sets.append(get_single_rotate(False, i*target//(gt_domains+1)))
-        print(i*target//(gt_domains+1))
-    all_sets.append(tgt_trainset)
-
-    # TODO: Make sure to add rep shift to other datasets
-    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=5, sharpness_aware=sharpness_aware)
-
-    elapsed = round(time.time() - t, 2)
-    # print(elapsed)
-    with open(f"logs/mnist_{target}_{gt_domains}_layer.txt", "a") as f:
-        f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
-
-
-def run_mnist_ablation(target, gt_domains, generated_domains, sharpness_aware=True):
-
-    encoder = ENCODER().to(device)
-    src_trainset, tgt_trainset = get_single_rotate(False, 0), get_single_rotate(False, target)
-    source_model = get_source_model(args, src_trainset, src_trainset, 10, "mnist", encoder=encoder, epochs=20, sharpness_aware=sharpness_aware)
-    model_copy = copy.deepcopy(source_model)
-
-    all_sets = []
-    for i in range(1, gt_domains+1):
-        all_sets.append(get_single_rotate(False, i*target//(gt_domains+1)))
-        print(i*target//(gt_domains+1))
-    all_sets.append(tgt_trainset)
-
-    direct_acc, st_acc = self_train(args, model_copy, [tgt_trainset], epochs=10, sharpness_aware=sharpness_aware)
-    direct_acc_all, st_acc_all = self_train(args, source_model, all_sets, epochs=10, sharpness_aware=sharpness_aware)
-    model_copy1 = copy.deepcopy(source_model)
-    model_copy2 = copy.deepcopy(source_model)
-    model_copy3 = copy.deepcopy(source_model)
-    model_copy4 = copy.deepcopy(source_model)
-
-    e_src_trainset, e_tgt_trainset = get_encoded_dataset(source_model.encoder, src_trainset), get_encoded_dataset(source_model.encoder, tgt_trainset)
-    intersets = all_sets[:-1]
-    encoded_intersets = [e_src_trainset]
-    for i in intersets:
-        encoded_intersets.append(get_encoded_dataset(source_model.encoder, i))
-    encoded_intersets.append(e_tgt_trainset)
-
-    # random plan
-    all_domains1 = []
-    for i in range(len(encoded_intersets)-1):
-        plan = ot_ablation(len(src_trainset), "random")
-        all_domains1 += generate_domains(generated_domains, encoded_intersets[i], encoded_intersets[i+1], plan=plan)
-    _, generated_acc1 = self_train(args, model_copy1.mlp, all_domains1, epochs=10, sharpness_aware=sharpness_aware)
-    
-    # uniform plan
-    all_domains4 = []
-    for i in range(len(encoded_intersets)-1):
-        plan = ot_ablation(len(src_trainset), "uniform")
-        all_domains4 += generate_domains(generated_domains, encoded_intersets[i], encoded_intersets[i+1], plan=plan)
-    _, generated_acc4 = self_train(args, model_copy4.mlp, all_domains4, epochs=10, sharpness_aware=sharpness_aware)
-    
-    # OT plan
-    all_domains2 = []
-    for i in range(len(encoded_intersets)-1):
-        all_domains2 += generate_domains(generated_domains, encoded_intersets[i], encoded_intersets[i+1])
-    _, generated_acc2 = self_train(args, model_copy2.mlp, all_domains2, epochs=10, sharpness_aware=sharpness_aware)
-
-    # ground-truth plan
-    all_domains3 = []
-    for i in range(len(encoded_intersets)-1):
-        plan = np.identity(len(src_trainset))
-        all_domains3 += generate_domains(generated_domains, encoded_intersets[i], encoded_intersets[i+1])
-    _, generated_acc3 = self_train(args, model_copy3.mlp, all_domains3, epochs=10, sharpness_aware=sharpness_aware)
-
-    with open(f"logs/mnist_{target}_{generated_domains}_ablation.txt", "a") as f:
-        f.write(f"seed{args.seed}generated{generated_domains},{round(direct_acc, 2)},{round(st_acc, 2)},{round(st_acc_all, 2)},{round(generated_acc1, 2)},{round(generated_acc4.item(), 2)},{round(generated_acc2, 2)},{round(generated_acc3, 2)}\n")
-
-
 def run_portraits_experiment(gt_domains, generated_domains, sharpness_aware=True):
     t = time.time()
 
@@ -162,7 +78,7 @@ def run_portraits_experiment(gt_domains, generated_domains, sharpness_aware=True
 
     src_trainset = EncodeDataset(tr_x, tr_y.astype(int), transforms)
     tgt_trainset = EncodeDataset(ts_x, ts_y.astype(int), transforms)
-    source_model = get_source_model(args, src_trainset, src_trainset, 2, mode="portraits", encoder=encoder, epochs=20, sharpness_aware=sharpness_aware)
+    source_model = get_source_model(args, src_trainset, src_trainset, 2, mode="portraits", encoder=encoder, epochs=100, sharpness_aware=sharpness_aware)
     model_copy = copy.deepcopy(source_model)
 
     def get_domains(n_domains):
@@ -177,10 +93,35 @@ def run_portraits_experiment(gt_domains, generated_domains, sharpness_aware=True
     all_sets = get_domains(gt_domains)
     all_sets.append(tgt_trainset)
     
-    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=10, sharpness_aware=sharpness_aware)
+    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=25, sharpness_aware=sharpness_aware)
 
     elapsed = round(time.time() - t, 2)
     with open(f"logs/portraits_exp_time.txt", "a") as f:
+        f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
+
+
+def run_mnist_experiment(target, gt_domains, generated_domains, sharpness_aware=True):
+
+    t = time.time()
+
+    src_trainset, tgt_trainset = get_single_rotate(False, 0), get_single_rotate(False, target)
+
+    encoder = ENCODER().to(device)
+    source_model = get_source_model(args, src_trainset, src_trainset, 10, "mnist", encoder=encoder, epochs=100, sharpness_aware=sharpness_aware)
+    model_copy = copy.deepcopy(source_model)
+
+    all_sets = []
+    for i in range(1, gt_domains+1):
+        all_sets.append(get_single_rotate(False, i*target//(gt_domains+1)))
+        print(i*target//(gt_domains+1))
+    all_sets.append(tgt_trainset)
+
+    # TODO: Make sure to add rep shift to other datasets
+    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=25, sharpness_aware=sharpness_aware)
+
+    elapsed = round(time.time() - t, 2)
+    # print(elapsed)
+    with open(f"logs/mnist_{target}_{gt_domains}_layer.txt", "a") as f:
         f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
 
 
@@ -193,7 +134,7 @@ def run_covtype_experiment(gt_domains, generated_domains, sharpness_aware=True):
     tgt_trainset = EncodeDataset(torch.from_numpy(trg_test_x).float(), torch.tensor(trg_test_y.astype(int)))
 
     encoder = MLP_Encoder().to(device)
-    source_model = get_source_model(args, src_trainset, src_trainset, 2, mode="covtype", encoder=encoder, epochs=5, sharpness_aware=sharpness_aware)
+    source_model = get_source_model(args, src_trainset, src_trainset, 2, mode="covtype", encoder=encoder, epochs=100, sharpness_aware=sharpness_aware)
     model_copy = copy.deepcopy(source_model)
 
     def get_domains(n_domains):
@@ -211,7 +152,7 @@ def run_covtype_experiment(gt_domains, generated_domains, sharpness_aware=True):
     all_sets = get_domains(gt_domains)
     all_sets.append(tgt_trainset)
 
-    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=10, sharpness_aware=sharpness_aware)
+    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=25, sharpness_aware=sharpness_aware)
 
     with open(f"logs/covtype_exp_{args.log_file}.txt", "a") as f:
         f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
@@ -229,7 +170,7 @@ def run_color_mnist_experiment(gt_domains, generated_domains, sharpness_aware=Tr
     src_trainset, tgt_trainset = EncodeDataset(src_x, src_y.astype(int), ToTensor()), EncodeDataset(trg_val_x, trg_val_y.astype(int), ToTensor())
 
     encoder = ENCODER().to(device)
-    source_model = get_source_model(args, src_trainset, src_trainset, 10, "mnist", encoder=encoder, epochs=20, sharpness_aware=sharpness_aware)
+    source_model = get_source_model(args, src_trainset, src_trainset, 10, "mnist", encoder=encoder, epochs=100, sharpness_aware=sharpness_aware)
     model_copy = copy.deepcopy(source_model)
 
     def get_domains(n_domains):
@@ -251,7 +192,7 @@ def run_color_mnist_experiment(gt_domains, generated_domains, sharpness_aware=Tr
     all_sets = get_domains(gt_domains)
     all_sets.append(tgt_trainset)
 
-    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=10, sharpness_aware=sharpness_aware)
+    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=25, sharpness_aware=sharpness_aware)
         
     with open(f"logs/color{args.log_file}.txt", "a") as f:
         f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
@@ -264,8 +205,6 @@ def main(args):
     if args.dataset == "mnist":
         if args.mnist_mode == "normal":
             run_mnist_experiment(args.rotation_angle, args.gt_domains, args.generated_domains, args.sam)
-        else:
-           run_mnist_ablation(args.rotation_angle, args.gt_domains, args.generated_domains, args.sam)
     else:
         eval(f"run_{args.dataset}_experiment({args.gt_domains}, {args.generated_domains}, {args.sam})")
 
@@ -277,7 +216,7 @@ if __name__ == '__main__':
     parser.add_argument("--gt-domains", default=0, type=int)
     parser.add_argument("--generated-domains", default=0, type=int)
     parser.add_argument("--seed", default=0, type=int)
-    parser.add_argument("--mnist-mode", default="normal", choices=["normal", "ablation"])
+    parser.add_argument("--mnist-mode", default="normal", choices=["normal"])
     parser.add_argument("--rotation-angle", default=45, type=int)
     parser.add_argument("--batch-size", default=128, type=int)
     parser.add_argument("--lr", default=1e-4, type=float)
