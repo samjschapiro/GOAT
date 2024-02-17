@@ -4,27 +4,31 @@ import numpy.linalg as la
 
 
 class SAM(torch.optim.Optimizer):
-    def __init__(self, params, base_optimizer, rho=0.1, adaptive=False, **kwargs):
+    def __init__(self, params, base_optimizer, rho=0.1, adaptive=False, second_order=False, **kwargs):
         assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
 
         defaults = dict(rho=rho, adaptive=adaptive, **kwargs)
         super(SAM, self).__init__(params, defaults)
-
         self.base_optimizer = base_optimizer(self.param_groups, **kwargs)
         self.param_groups = self.base_optimizer.param_groups
         self.defaults.update(self.base_optimizer.defaults)
+        self.second_order = second_order
 
     @torch.no_grad()
-    def first_step(self, zero_grad=False):
-        grad_norm = self._grad_norm()
-        for group in self.param_groups:
-            scale = group["rho"] / (grad_norm + 1e-12)
+    def first_step(self, eigenvecs=None, zero_grad=False):
+        if not self.second_order:
+            grad_norm = self._grad_norm()
+            for group in self.param_groups:
+                scale = group["rho"] / (grad_norm + 1e-12)
 
-            for p in group["params"]:
-                if p.grad is None: continue
-                self.state[p]["old_p"] = p.data.clone()
-                e_w = (torch.pow(p, 2) if group["adaptive"] else 1.0) * p.grad * scale.to(p)
-                p.add_(e_w)  # climb to the local maximum "w + e(w)"
+                for p in group["params"]:
+                    if p.grad is None: continue
+                    self.state[p]["old_p"] = p.data.clone()
+                    e_w = (torch.pow(p, 2) if group["adaptive"] else 1.0) * p.grad * scale.to(p)
+                    p.add_(e_w)  # climb to the local maximum "w + e(w)"
+        else:
+           # TODO: Modify logic in hessian library to accomodate this shit.
+            pass
 
         if zero_grad: self.zero_grad()
 

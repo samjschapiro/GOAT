@@ -8,7 +8,7 @@ from ot_util import *
 from model import *
 import copy
 
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def get_labels(dataloader, model, confidence_q=0.1):
     logits = []
