@@ -36,7 +36,7 @@ def calculate_modal_val_accuracy(model, valloader):
     return 100 * correct / total
 
 
-def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=False, verbose=True, sharpness_aware=True, second_order=False):
+def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=False, verbose=True, sharpness_aware=True, second_order=True, num_proj_steps=2):
     def enable_bn(model):
         if isinstance(model, nn.BatchNorm1d):
             model.backup_momentum = model.momentum
@@ -47,7 +47,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
             model.momentum = model.backup_momentum
 
     if sharpness_aware:
-        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, second_order=True)
+        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, second_order=False)
 
     model.train()
     train_loss = 0
@@ -63,22 +63,27 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
         labels = labels.to(device)
         if sharpness_aware:
             enable_bn(model)
-            if vae:
-                recon_batch, mu, log_var = model(data)
-                loss = loss_function(recon_batch, data, mu, log_var)
-            else:
-                output = model(data)
-                print('About to compute eigenthings')
-                if len(x) == 2:
-                    loss = F.cross_entropy(output, labels)
-                    _, eigenvecs = compute_hessian_eigenthings(copy.deepcopy(model),  copy.deepcopy(train_loader), F.cross_entropy, use_gpu=True, full_dataset=False, num_eigenthings=1)
-                    loss.backward()
-                elif len(x) == 3:
-                    criterion = nn.CrossEntropyLoss(reduction='none')
-                    loss = criterion(output, labels)
-                    _, eigenvecs = compute_hessian_eigenthings(copy.deepcopy(model), copy.deepcopy(train_loader), nn.CrossEntropyLoss, use_gpu=True, full_dataset=False, num_eigenthings=1)
-                    (loss * weight).mean().backward()
-            optimizer.first_step(eigenvecs=eigenvecs, zero_grad=True)
+            for idx in range(num_proj_steps-1):      
+                if vae:
+                    recon_batch, mu, log_var = model(data)
+                    loss = loss_function(recon_batch, data, mu, log_var)
+                else:
+                    output = model(data)
+                    if len(x) == 2:
+                        loss = F.cross_entropy(output, labels)
+                        # if second_order:
+                        #     _, eigenvecs = compute_hessian_eigenthings(copy.deepcopy(model),  copy.deepcopy(train_loader), F.cross_entropy, use_gpu=True, full_dataset=False, num_eigenthings=1, mode='lanczos')
+                        loss.backward()
+                    elif len(x) == 3:
+                        criterion = nn.CrossEntropyLoss(reduction='none')
+                        loss = criterion(output, labels)
+                        # if second_order:
+                        #     _, eigenvecs = compute_hessian_eigenthings(copy.deepcopy(model), copy.deepcopy(train_loader), nn.CrossEntropyLoss, use_gpu=True, full_dataset=False, num_eigenthings=1, mode='lanczos')
+                        (loss * weight).mean().backward()
+                optimizer.first_grad_step(zero_grad=False)
+            optimizer.first_step(zero_grad=True)
+
+            
             disable_bn(model)
             if vae:
                 loss_function(model(data)[0], data, model(data)[1], model(data)[2])
@@ -90,7 +95,6 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
                     (criterion(model(data), labels) * weight).mean().backward()
             optimizer.second_step(zero_grad=True)
             solution_loss = loss
-        
         else:
             base_optimizer.zero_grad()
             if vae:

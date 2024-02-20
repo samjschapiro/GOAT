@@ -40,7 +40,7 @@ def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epoch
 def run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=10, sharpness_aware=True):
 
     # get the performance of direct adaptation from the source to target, st involves self-training on target
-    direct_acc, st_acc, st_rep_shift, st_sharpnesses, rep_norm = self_train(args, model_copy, [tgt_trainset], epochs=epochs, sharpness_aware=sharpness_aware)
+    # direct_acc, st_acc, st_rep_shift, st_sharpnesses, rep_norm = self_train(args, model_copy, [tgt_trainset], epochs=epochs, sharpness_aware=sharpness_aware)
     # get the performance of GST from the source to target, st involves self-training on target
     direct_acc_all, st_acc_all, st_rep_shift_all, st_sharpnesses_all, rep_norm_all = self_train(args, source_model, all_sets, epochs=epochs, sharpness_aware=sharpness_aware)
 
@@ -55,7 +55,7 @@ def run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, gen
     # encoded_intersets.append(e_tgt_trainset)
 
     # generate intermediate domains
-    generated_acc = 0
+    #generated_acc = 0
     # if generated_domains > 0:
     #     all_domains = []
     #     for i in range(len(encoded_intersets)-1):
@@ -63,7 +63,9 @@ def run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, gen
 
     #     _, generated_acc = self_train(args, source_model.mlp, all_domains, epochs=epochs, sharpness_aware=sharpness_aware)
     
-    return direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, np.mean(st_sharpnesses), np.mean(st_sharpnesses_all), np.mean(rep_norm), np.mean(rep_norm_all)
+    # return direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, np.mean(st_sharpnesses), np.mean(st_sharpnesses_all), np.mean(rep_norm), np.mean(rep_norm_all)
+    return direct_acc_all, st_acc_all, st_rep_shift_all, np.mean(st_sharpnesses_all), np.mean(rep_norm_all)
+
 
 def run_portraits_experiment(gt_domains, generated_domains, sharpness_aware=True):
     t = time.time()
@@ -117,12 +119,12 @@ def run_mnist_experiment(target, gt_domains, generated_domains, sharpness_aware=
     all_sets.append(tgt_trainset)
 
     # TODO: Make sure to add rep shift to other datasets
-    direct_acc, st_acc, direct_acc_all, st_acc_all, generated_acc, st_rep_shift, st_rep_shift_all, st_sharp, st_sharp_all, rep_norm, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=5, sharpness_aware=sharpness_aware)
+    direct_acc_all, st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=5, sharpness_aware=sharpness_aware)
 
     elapsed = round(time.time() - t, 2)
     # print(elapsed)
     with open(f"logs/mnist_{target}_{gt_domains}_layer.txt", "a") as f:
-        f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc, 2)},{round(st_acc, 2)},{round(direct_acc_all, 2)},{round(st_acc_all, 2)},{round(generated_acc, 2)},{round(0 if len(st_rep_shift) == 0 else np.mean(st_rep_shift), 2)},{round(np.mean(st_rep_shift_all), 2)},{round(st_sharp, 2)}, {round(st_sharp_all, 2)},{round(rep_norm, 2)}, {round(rep_norm_all, 2)}\n")
+        f.write(f"seed{args.seed}with{gt_domains}gt{generated_domains}generated,{round(direct_acc_all, 2)},{round(st_acc_all, 2)},,{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n")
 
 
 def run_covtype_experiment(gt_domains, generated_domains, sharpness_aware=True):
