@@ -36,7 +36,7 @@ def calculate_modal_val_accuracy(model, valloader):
     return 100 * correct / total
 
 
-def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=False, verbose=True, sharpness_aware=True, second_order=True, num_proj_steps=2):
+def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=False, verbose=True, sharpness_aware=True, second_order=True, store_gradients=True, num_proj_steps=2):
     def enable_bn(model):
         if isinstance(model, nn.BatchNorm1d):
             model.backup_momentum = model.momentum
@@ -47,7 +47,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
             model.momentum = model.backup_momentum
 
     if sharpness_aware:
-        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, second_order=False)
+        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, second_order=False, store_gradients=True)
 
     model.train()
     train_loss = 0
@@ -178,7 +178,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
     if verbose:
         print('====> Epoch: {} Average loss: {:.8f}'.format(epoch, train_loss / len(train_loader.dataset)))
 
-    return perturbed_loss - solution_loss
+    return perturbed_loss - solution_loss, optimizer.pre_gradient_components if sharpness_aware else None
 
 def test(val_loader, model, vae=False, verbose=True):
     model.eval()

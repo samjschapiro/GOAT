@@ -29,8 +29,9 @@ def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epoch
     trainloader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     testloader = DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
+    # TODO: Add metrics here
     for epoch in range(1, epochs+1):
-        train(epoch, trainloader, model, base_optimizer=optimizer, verbose=verbose, sharpness_aware=sharpness_aware)
+        train(epoch, trainloader, model, base_optimizer=optimizer, verbose=verbose, sharpness_aware=sharpness_aware, store_gradients=True)
         if epoch % 5 == 0:
             test(testloader, model, verbose=verbose)
 
@@ -109,7 +110,7 @@ def run_mnist_experiment(target, gt_domains, generated_domains, sharpness_aware=
     src_trainset, tgt_trainset = get_single_rotate(False, 0), get_single_rotate(False, target)
 
     encoder = ENCODER().to(device)
-    source_model = get_source_model(args, src_trainset, src_trainset, 10, "mnist", encoder=encoder, epochs=20, sharpness_aware=sharpness_aware)
+    source_model = get_source_model(args, src_trainset, src_trainset, 10, "mnist", encoder=encoder, epochs=100, sharpness_aware=sharpness_aware)
     model_copy = copy.deepcopy(source_model)
 
     all_sets = []
@@ -119,7 +120,7 @@ def run_mnist_experiment(target, gt_domains, generated_domains, sharpness_aware=
     all_sets.append(tgt_trainset)
 
     # TODO: Make sure to add rep shift to other datasets
-    direct_acc_all, st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=5, sharpness_aware=sharpness_aware)
+    direct_acc_all, st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(model_copy, source_model, src_trainset, tgt_trainset, all_sets, generated_domains, epochs=25, sharpness_aware=sharpness_aware)
 
     elapsed = round(time.time() - t, 2)
     # print(elapsed)

@@ -5,7 +5,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class SAM(torch.optim.Optimizer):
-    def __init__(self, params, base_optimizer, rho=0.1, adaptive=False, second_order=False, **kwargs):
+    def __init__(self, params, base_optimizer, rho=0.1, adaptive=False, second_order=False, store_gradients=False, **kwargs):
         assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
 
         defaults = dict(rho=rho, adaptive=adaptive, **kwargs)
@@ -15,6 +15,9 @@ class SAM(torch.optim.Optimizer):
         self.defaults.update(self.base_optimizer.defaults)
         # self.rho = rho
         self.second_order = second_order
+        if store_gradients:
+            self.pre_gradient_components = {}
+            self.post_gradient_components = {}
 
     @torch.no_grad()
     def first_step(self, eigenvecs=None, zero_grad=False):
@@ -27,6 +30,9 @@ class SAM(torch.optim.Optimizer):
                 self.state[p]["old_p"] = p.data.clone()
                 e_w = (torch.pow(p, 2) if group["adaptive"] else 1.0) * p.grad * scale.to(p)
                 p.add_(e_w)  # climb to the local maximum "w + e(w)"
+                if p not in self.pre_gradient_components.keys():
+                    self.pre_gradient_components[p] = []
+                self.pre_gradient_components[p].append(torch.sort(torch.abs(torch.flatten(p.grad))))
         # else:
         #     # model_param_count = 0
         #     # for group in self.param_groups:
@@ -68,7 +74,11 @@ class SAM(torch.optim.Optimizer):
         for group in self.param_groups:
             for p in group["params"]:
                 if p.grad is None: continue
+                if p not in self.post_gradient_components.keys():
+                    self.post_gradient_components[p] = []
+                self.post_gradient_components[p].append(torch.sort(torch.abs(torch.flatten(p.grad))))
                 p.data = self.state[p]["old_p"]  # get back to "w" from "w + e(w)"
+                                
 
         self.base_optimizer.step()  # do the actual "sharpness-aware" update
 
