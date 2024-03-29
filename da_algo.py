@@ -58,7 +58,7 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
             data = trainset.data.cpu().detach().numpy()
         else:
             data = trainset.data
-        trainset  = EncodeDataset(data, train_labs, trainset.transform)
+        trainset = EncodeDataset(data, train_labs, trainset.transform)
         # filter out the least 10% confident data
         filter_trainset = Subset(trainset, train_idx)
         print("Trainset size: " + str(len(filter_trainset)))

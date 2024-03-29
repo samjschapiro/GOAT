@@ -163,7 +163,7 @@ if __name__ == '__main__':
     parser.add_argument("--dataset", choices=["mnist", "portraits", "covtype", "color_mnist"])
     parser.add_argument("--optname", choices=["sgd", "adam", "sam", "ssam"], default="sam")
     parser.add_argument("--base-opt", choices=["sgd", "adam"], default="sgd")
-    parser.add_argument("--intermediate-domains", default=0, type=int)
+    parser.add_argument("--intermediate-domains", default=1, type=int)
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--rotation-angle", default=45, type=int)
     parser.add_argument("--source-epochs", default=100, type=int)
