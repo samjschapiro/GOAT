@@ -1,11 +1,13 @@
-## Generative Gradual Domain Adaptation with Optimal Transport (GOAT)
+## Sharpness-Aware Generalization Bounds for Gradual Domain Adaptation
 
-This is the official implementation for the algorithm **G**radual D**O**main **A**daptation with Optimal **T**ransport (GOAT) in the paper ["Gradual Domain Adaptation: Theory and Algorithms."](https://arxiv.org/abs/2310.13852). The algorithm design is motivated by our previous work, ["Understanding gradual domain adaptation: Improved analysis, optimal path and beyond"](https://arxiv.org/abs/2204.08200), published in ICML 2022.
+Authors: Samuel Schapiro, Han Zhao
+
+This is the official implementation for studying Sharpness-Aware Minimization in Gradual Domain Adaptation. It is largely based on the code from the paper ["Gradual Domain Adaptation: Theory and Algorithms."](https://arxiv.org/abs/2310.13852), which is based on the ICML 2022 paper ["Understanding gradual domain adaptation: Improved analysis, optimal path and beyond"](https://arxiv.org/abs/2204.08200).
 
 # Install the repo
 ```
-git clone https://github.com/yifei-he/GOAT.git
-cd GOAT
+git clone https://github.com/samjschapiro/SAM-GDA.git
+cd SAM-GDA
 pip install -r requirements.txt
 ```
 
