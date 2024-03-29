@@ -26,7 +26,6 @@ def calculate_modal_val_accuracy(model, valloader):
                 images, labels, weight = x
             else:
                 images, labels = x
-
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             predicted = outputs.argmax(dim=1)
@@ -71,14 +70,10 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
                     output = model(data)
                     if len(x) == 2:
                         loss = F.cross_entropy(output, labels)
-                        # if second_order:
-                        #     _, eigenvecs = compute_hessian_eigenthings(copy.deepcopy(model),  copy.deepcopy(train_loader), F.cross_entropy, use_gpu=True, full_dataset=False, num_eigenthings=1, mode='lanczos')
                         loss.backward()
                     elif len(x) == 3:
                         criterion = nn.CrossEntropyLoss(reduction='none')
                         loss = criterion(output, labels)
-                        # if second_order:
-                        #     _, eigenvecs = compute_hessian_eigenthings(copy.deepcopy(model), copy.deepcopy(train_loader), nn.CrossEntropyLoss, use_gpu=True, full_dataset=False, num_eigenthings=1, mode='lanczos')
                         (loss * weight).mean().backward()
                 optimizer.first_grad_step(zero_grad=False)
             optimizer.first_step(zero_grad=True)

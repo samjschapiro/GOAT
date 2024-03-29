@@ -44,19 +44,7 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
     # TODO: Need to store representation shift here
     representation_weights = []
     representation_biases = []
-    sharpnesses = []
-    pre_gradient_component_lists = [] #list(list(dict("param" -> list(gradients)))) : intermediate domain, epoch, dict[parameter_name] = list(gradients)
-    for i in range(len(pre_gradient_component_lists)):
-        for epoch in range(len(pre_gradient_component_lists[i])):
-            curr_dict = pre_gradient_component_lists[i][epoch]
-            for parameter in curr_dict.keys():
-                first_batch_grads = curr_dict[parameter][0] # first batch's gradients
-    post_gradient_component_lists = []
-    for i in range(len(post_gradient_component_lists)):
-        for epoch in range(len(post_gradient_component_lists[i])):
-            curr_dict = post_gradient_component_lists[i][epoch]
-            for parameter in curr_dict.keys():
-                first_batch_grads = curr_dict[parameter][0] # first batch's gradients            
+    sharpnesses = []      
     # start self-training on intermediate domains
     for i in range(steps):
         print(f"--------Training on the {i}th domain--------")
@@ -95,8 +83,6 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
                 pre_gradient_component_list.append(pre_gradient_components)
                 post_gradient_component_list.append(post_gradient_components)         
                 test(targetloader, student)
-        pre_gradient_component_lists.append(pre_gradient_component_list)
-        post_gradient_component_lists.append(post_gradient_component_list)
         sharpnesses.append(final_sharpness.cpu().detach().numpy())
 
         print("------------Performance on the current domain----------")
