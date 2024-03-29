@@ -19,9 +19,9 @@ The portraits dataset can be downloaded from [here](https://www.dropbox.com/s/ub
 # Run Experiment
 To run experiments, follow the following syntax.
 ```
-python experiments.py --dataset color_mnist --intermediate-domains 1  --optimizer sam
+python experiments.py --dataset color_mnist --intermediate-domains 1  --opt-name sam
 ```
-Here, `dataset` can be selected from `[mnist, portraits, covtype, color_mnist]`. The choice of `optimizer` could be one of `[sgd, adam, sam, ssam, asam, fsam, esam]`
+Here, `dataset` can be selected from `[mnist, portraits, covtype, color_mnist]`. The choice of `opt-name` could be one of `[sgd, adam, sam, ssam, asam, fsam, esam]`
 
 # Citation
 

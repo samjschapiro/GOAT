@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from hessian_eigenthings import compute_hessian_eigenthings
 from sam import SAM
+from ssam import SSAM
 import copy
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -23,7 +24,7 @@ def calculate_modal_val_accuracy(model, valloader):
     with torch.no_grad():
         for x in valloader:
             if len(x) == 3:
-                images, labels, weight = x
+                images, labels, _ = x
             else:
                 images, labels = x
             images, labels = images.to(device), labels.to(device)
@@ -35,7 +36,7 @@ def calculate_modal_val_accuracy(model, valloader):
     return 100 * correct / total
 
 
-def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=False, verbose=True, sharpness_aware=True, second_order=True, store_gradients=True, num_proj_steps=2):
+def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, vae=False, verbose=True):
     def enable_bn(model):
         if isinstance(model, nn.BatchNorm1d):
             model.backup_momentum = model.momentum
@@ -45,12 +46,19 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
         if isinstance(model, nn.BatchNorm1d):
             model.momentum = model.backup_momentum
 
-    if sharpness_aware:
-        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, second_order=False, store_gradients=True)
+    if base_opt == 'sgd':
+        base_optimizer = optim.SGD
+    elif base_opt == 'adam':
+        base_optimizer = optim.Adam(model.parameters())
+
+    if opt_name == 'sam':
+        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, momentum=0.9)
+    elif opt_name == 'ssam':
+        optimizer = SSAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, momentum=0.9)
+
 
     model.train()
     train_loss = 0
-    idx = 0
     for _, x in enumerate(train_loader):
         if len(x) == 2:
             data, labels = x
@@ -60,22 +68,20 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
 
         data = data.to(device)
         labels = labels.to(device)
-        if sharpness_aware:
-            enable_bn(model)
-            for idx in range(num_proj_steps-1):      
-                if vae:
-                    recon_batch, mu, log_var = model(data)
-                    loss = loss_function(recon_batch, data, mu, log_var)
-                else:
-                    output = model(data)
-                    if len(x) == 2:
-                        loss = F.cross_entropy(output, labels)
-                        loss.backward()
-                    elif len(x) == 3:
-                        criterion = nn.CrossEntropyLoss(reduction='none')
-                        loss = criterion(output, labels)
-                        (loss * weight).mean().backward()
-                optimizer.first_grad_step(zero_grad=False)
+        if opt_name == 'sam':
+            enable_bn(model) 
+            if vae:
+                recon_batch, mu, log_var = model(data)
+                loss = loss_function(recon_batch, data, mu, log_var)
+            else:
+                output = model(data)
+                if len(x) == 2:
+                    loss = F.cross_entropy(output, labels)
+                    loss.backward()
+                elif len(x) == 3:
+                    criterion = nn.CrossEntropyLoss(reduction='none')
+                    loss = criterion(output, labels)
+                    (loss * weight).mean().backward()
             optimizer.first_step(zero_grad=True)
 
             
@@ -111,7 +117,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
             lr_scheduler.step()
 
     # SHARPNESS
-    if sharpness_aware == True:
+    if opt_name == 'sam':
         final_lr = optimizer.param_groups[0]['lr']
         enable_bn(model)
         model_copy = copy.deepcopy(model).to(device)
@@ -173,7 +179,7 @@ def train(epoch, train_loader, model, base_optimizer, lr_scheduler=None, vae=Fal
     if verbose:
         print('====> Epoch: {} Average loss: {:.8f}'.format(epoch, train_loss / len(train_loader.dataset)))
 
-    return perturbed_loss - solution_loss, optimizer.pre_gradient_components if sharpness_aware else None
+    return perturbed_loss - solution_loss
 
 def test(val_loader, model, vae=False, verbose=True):
     model.eval()

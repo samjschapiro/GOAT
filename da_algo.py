@@ -32,7 +32,7 @@ def get_labels(dataloader, model, confidence_q=0.1):
     labels = torch.argmax(logits, axis=1) #[indices]
     return labels.cpu().detach().type(torch.int64), list(indices.detach().numpy())
 
-def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, supervised=False):
+def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
     steps = len(datasets)
     teacher = source_model
     targetset = datasets[-1]
@@ -59,29 +59,18 @@ def self_train(args, source_model, datasets, epochs=10, sharpness_aware=True, su
         else:
             data = trainset.data
         trainset  = EncodeDataset(data, train_labs, trainset.transform)
-        if supervised == False:
-            # filter out the least 10% confident data
-            filter_trainset = Subset(trainset, train_idx)
-            print("Trainset size: " + str(len(filter_trainset)))
-            trainloader = DataLoader(filter_trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-        else:
-            trainloader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        # filter out the least 10% confident data
+        filter_trainset = Subset(trainset, train_idx)
+        print("Trainset size: " + str(len(filter_trainset)))
+        trainloader = DataLoader(filter_trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
         # initialize and train student model
         student = copy.deepcopy(teacher)
-        if sharpness_aware == True:
-            optimizer = optim.SGD 
-        else:
-            optimizer = optim.Adam(student.parameters(), lr=args.lr, weight_decay=1e-4)
 
         final_sharpness = 0
-        pre_gradient_component_list = []
-        post_gradient_component_list = []
         for i in range(1, epochs+1):
-            final_sharpness, pre_gradient_components, post_gradient_components = train(i, trainloader, student, base_optimizer=optimizer, sharpness_aware=sharpness_aware, store_gradients=True) 
+            final_sharpness = train(i, trainloader, student, base_opt=base_opt, opt_name=opt_name) 
             if i % 5 == 0:
-                pre_gradient_component_list.append(pre_gradient_components)
-                post_gradient_component_list.append(post_gradient_components)         
                 test(targetloader, student)
         sharpnesses.append(final_sharpness.cpu().detach().numpy())
 

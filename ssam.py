@@ -6,12 +6,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def ssam_obj_func(beta, nabla_f, nabla_l, lam):
     beta, nabla_f, nabla_l = cupy.ravel(beta), cupy.ravel(nabla_f), cupy.ravel(nabla_l)
-    # if cupy.linalg.norm(beta, 2) == 0:
-    #     print('Beta norm 0')
-    # if cupy.linalg.norm(nabla_f, 2) == 0:
-    #     print('nabla_f norm 0')    
-    # if cupy.linalg.norm(nabla_l, 2) == 0:
-    #     print('nabla_l norm 0')       
     f = - (1 - lam)*cupy.inner(beta, nabla_l) - lam*(cupy.inner(beta,nabla_f))**2
     
     grad = -(1 - lam)*nabla_l - lam*2 * nabla_f * cupy.inner(nabla_f, beta) 
