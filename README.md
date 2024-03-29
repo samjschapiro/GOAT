@@ -21,13 +21,26 @@ To run experiments, follow the following syntax.
 ```
 python experiments.py --dataset color_mnist --intermediate-domains 1  --opt-name sam
 ```
-Here, `dataset` can be selected from `[mnist, portraits, covtype, color_mnist]`. The choice of `opt-name` could be one of `[sgd, adam, sam, ssam, asam, fsam, esam]`
+Arguments:
+- `dataset` can be selected from `[mnist, portraits, covtype, color_mnist]`
+- `optname` can be selected from `[sgd, adam, sam, ssam, asam, fsam, esam]`
+- `base-opt` can be selected from `[sgd, adam]`
+- `intermediate-domains`
+- `seed`
+- `rotation-angle`
+- `source-epochs`
+- `intermediate-epochs`
+- `batch-size`
+- `lr`
+- `num-workers`
+
+Here, `dataset` can be selected from `[mnist, portraits, covtype, color_mnist]`. The choice of `opt-name` could be one of 
+
+
 
 # Citation
 
-
-
-## This repository is largely based on the work from
+**This repository is largely based on the work from**
 ```
 @misc{he2023gradual,
       title={Gradual Domain Adaptation: Theory and Algorithms}, 
