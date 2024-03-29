@@ -8,14 +8,6 @@ from ssam import SSAM
 import copy
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-
-# return reconstruction error + KL divergence losses
-def loss_function(recon_x, x, mu, log_var):
-    BCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
-    KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
-    return BCE + KLD
-
-
 def calculate_modal_val_accuracy(model, valloader):
     model.eval()
     correct = 0.
@@ -68,8 +60,18 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
 
         data = data.to(device)
         labels = labels.to(device)
+        if opt_name == 'ssam':
+            inputs_prep = copy.deepcopy(data)
         if opt_name == 'sam' or opt_name == 'ssam' or opt_name == 'asam':
             enable_bn(model)
+            if opt_name == 'ssam':
+                if len(x) == 2:
+                    loss_f = torch.mean(model(inputs_prep.cuda()))    
+                elif len(x) == 3:
+                    loss_f = torch.mean(weight*model(inputs_prep.cuda())) 
+                loss_f.backward()
+                optimizer.prep(zero_grad=True)
+
             output = model(data)
             if len(x) == 2:
                 loss = F.cross_entropy(output, labels)
@@ -79,9 +81,10 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
                 loss = criterion(output, labels)
                 (loss * weight).mean().backward()
 
-
-            optimizer.first_step(zero_grad=True)
-
+            if opt_name == 'ssam':
+                optimizer.first_step(zero_grad=True, n_iter=5)
+            else:
+                optimizer.first_step(zero_grad=True)
             
             disable_bn(model)
             if len(x) == 2:
@@ -109,7 +112,7 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
             lr_scheduler.step()
 
     # SHARPNESS
-    if opt_name == 'sam':
+    if opt_name in ['ssam', 'asam', 'sam']:
         final_lr = optimizer.param_groups[0]['lr']
         enable_bn(model)
         model_copy = copy.deepcopy(model).to(device)

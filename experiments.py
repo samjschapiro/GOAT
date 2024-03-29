@@ -10,6 +10,7 @@ from dataset import *
 import copy
 import argparse
 import random
+import os
 import torch.backends.cudnn as cudnn
 import time
 
@@ -149,7 +150,9 @@ def run_color_mnist_experiment(intermediate_domains, opt_name):
     st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
         
     with open(f"logs/color_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
-        f.write(f"seed{args.seed}with{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n")
+        if os.stat(f"logs/color_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            f.write("seed, intermediate_domains, accuracy, rep_shift, sharpness, rep_norm\n")
+        f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n")
 
 def main(args):
     print(args)

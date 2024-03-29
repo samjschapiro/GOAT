@@ -38,8 +38,6 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
     targetset = datasets[-1]
         
     targetloader = DataLoader(targetset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-    print("------------Direct adapt performance----------")
-    direct_acc = test(targetloader, teacher)
 
     # TODO: Need to store representation shift here
     representation_weights = []
@@ -58,6 +56,7 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
             data = trainset.data.cpu().detach().numpy()
         else:
             data = trainset.data
+        
         trainset = EncodeDataset(data, train_labs, trainset.transform)
         # filter out the least 10% confident data
         filter_trainset = Subset(trainset, train_idx)
@@ -113,5 +112,5 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
         representation_shifts.append(weight_diff + bias_diff)
         representation_norms.append((np.linalg.norm(representation_weights[idx+1], 2) + np.linalg.norm(representation_biases[idx+1]))**2)
 
-    return direct_acc, st_acc, representation_shifts, sharpnesses, np.mean(representation_norms)
+    return st_acc, representation_shifts, sharpnesses, np.mean(representation_norms)
 

@@ -41,7 +41,7 @@ class SSAM(torch.optim.Optimizer):
                 if torch.norm(beta_init, 2) != 0:
                     res = projgrad.minimize(ssam_obj_func, x0=cupy.ravel(cupy.array(beta_init.cpu().numpy())), 
                                             rho=self.rho, args=(cupy.array(nabla_f.cpu().numpy()), cupy.array(nabla_l.cpu().numpy()), self.lam), 
-                                            maxiters=n_iter, algo='fast', disp=False)
+                                            maxiters=n_iter, algo=None, disp=False)
                     e_w = res.x
                 else:
                     e_w = torch.zeros(p.shape)
