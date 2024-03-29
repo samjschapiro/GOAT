@@ -1,0 +1,2 @@
+seed, intermediate_domains, accuracy, rep_shift, sharpness, rep_norm
+0,1,92.8,0.07000000029802322, 0.15000000596046448, 19.56
