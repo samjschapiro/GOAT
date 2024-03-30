@@ -1,4 +1,4 @@
-## Sharpness-Aware Generalization Bounds for Gradual Domain Adaptation
+# Sharpness-Aware Generalization Bounds for Gradual Domain Adaptation
 
 **Authors:** Samuel Schapiro, Han Zhao
 
