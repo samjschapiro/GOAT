@@ -156,10 +156,12 @@ def run_color_mnist_experiment(intermediate_domains, opt_name):
 
 def main(args):
     print(args)
-    if args.dataset == "mnist":
-        run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
-    else:
-        eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
+    for i in range(args.number_indep_runs):
+        if args.dataset == "mnist":
+            run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
+        else:
+            eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
+        args.seed +=1
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="SAM-GDA-experiments")
@@ -168,6 +170,7 @@ if __name__ == '__main__':
     parser.add_argument("--base-opt", choices=["sgd", "adam"], default="sgd")
     parser.add_argument("--intermediate-domains", default=1, type=int)
     parser.add_argument("--seed", default=0, type=int)
+    parser.add_argument("--number-indep-runs", default=1, type=int)
     parser.add_argument("--rotation-angle", default=45, type=int)
     parser.add_argument("--source-epochs", default=100, type=int)
     parser.add_argument("--intermediate-epochs", default=25, type=int)
