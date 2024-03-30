@@ -37,7 +37,8 @@ Arguments:
 
 # Citation
 
-**This repository is largely based on the work from**
+This repository is largely based on work done by Haoxiang Wang, Yifei He, Bo Li, and Han Zhao:
+
 ```
 @misc{he2023gradual,
       title={Gradual Domain Adaptation: Theory and Algorithms}, 
