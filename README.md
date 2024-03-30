@@ -25,14 +25,13 @@ Arguments:
 - `dataset` can be selected from `[mnist, portraits, covtype, color_mnist]`
 - `optname` can be selected from `[sgd, adam, sam, ssam, asam, fsam, esam]`
 - `base-opt` can be selected from `[sgd, adam]`
-- `intermediate-domains`
-- `seed`
-- `rotation-angle`
-- `source-epochs`
-- `intermediate-epochs`
-- `batch-size`
-- `lr`
-- `num-workers`
+- `intermediate-domains` is the number of intermediate domains $T$
+- `rotation-angle` can be any integer in `[0, 359]`
+- `source-epochs` is the number of epochs to use for training on the source domain $t = 0$
+- `intermediate-epochs` is the number of epochs to use for training on intermediate domains $t = 1, 2, \dots, T$
+- `batch-size` is the batch size for training
+- `lr` is the learning rate
+- `num-workers` is the number of workers for parallelization
 
 Here, `dataset` can be selected from `[mnist, portraits, covtype, color_mnist]`. The choice of `opt-name` could be one of 
 
