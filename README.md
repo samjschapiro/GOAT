@@ -33,8 +33,6 @@ Arguments:
 - `lr` is the learning rate
 - `num-workers` is the number of workers for parallelization
 
-Here, `dataset` can be selected from `[mnist, portraits, covtype, color_mnist]`. The choice of `opt-name` could be one of 
-
 
 
 # Citation
