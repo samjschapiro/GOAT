@@ -46,11 +46,13 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
     if opt_name == 'sam':
         optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, momentum=0.9, adaptive=bool(opt_name == 'asam'))
     elif opt_name == 'ssam':
-        optimizer = SSAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, momentum=0.9)
+        optimizer = SSAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, momentum=0.9, adaptive=bool(opt_name == 'asam'))
 
 
     model.train()
     train_loss = 0
+    ssam_loss = 0
+    sam_loss = 0
     for _, x in enumerate(train_loader):
         if len(x) == 2:
             data, labels = x
@@ -61,7 +63,13 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
         data = data.to(device)
         labels = labels.to(device)
         if opt_name == 'ssam':
-            inputs_prep = copy.deepcopy(data)
+            inputs_prep, inputs_2, inputs_3 = copy.deepcopy(data), copy.deepcopy(data), copy.deepcopy(data)
+            targets_2, targets_3 = copy.deepcopy(labels), copy.deepcopy(labels)
+            copy_of_net = copy.deepcopy(model)
+            copy_of_optimizer = SAM(copy_of_net.parameters(), optim.SGD, rho=0.05, lr=1e-3, momentum=0.9, weight_decay=5e-4)
+            outputs_1 = copy_of_net(inputs_2)
+            outputs_2 = copy_of_net(inputs_3)
+
         if opt_name == 'sam' or opt_name == 'ssam' or opt_name == 'asam':
             enable_bn(model)
             if opt_name == 'ssam':
@@ -71,7 +79,8 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
                     loss_f = torch.mean(weight*model(inputs_prep.cuda())) 
                 loss_f.backward()
                 optimizer.prep(zero_grad=True)
-
+          
+               
             output = model(data)
             if len(x) == 2:
                 loss = F.cross_entropy(output, labels)
@@ -82,16 +91,34 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
                 (loss * weight).mean().backward()
 
             if opt_name == 'ssam':
+                # Stuff for logging SAM loss
+                if len(x) == 2:
+                    loss_1 = F.cross_entropy(outputs_1, targets_2)
+                    loss_1.backward()
+                elif len(x) == 3:
+                    criterion1 = nn.CrossEntropyLoss(reduction='none')
+                    loss_1 = criterion1(outputs_1, targets_2)
+                    (loss_1*weight).mean().backward()
+                copy_of_optimizer.first_step(zero_grad=True)
+                if len(x) == 2:
+                    sam_loss += F.cross_entropy(outputs_2, targets_3).item()
+                elif len(x) == 3:
+                    criterion1 = nn.CrossEntropyLoss(reduction='none')
+                    loss_2 = criterion1(outputs_2, targets_3)
+                    sam_loss += (loss_2*weight).mean().item()
+                # SSAM stuff
                 optimizer.first_step(zero_grad=True, n_iter=5)
             else:
                 optimizer.first_step(zero_grad=True)
             
             disable_bn(model)
             if len(x) == 2:
-                F.cross_entropy(model(data), labels).backward()
+                scnd_loss = F.cross_entropy(model(data), labels)
             elif len(x) == 3:
                 criterion = nn.CrossEntropyLoss(reduction='none')
-                (criterion(model(data), labels) * weight).mean().backward()
+                scnd_loss = (criterion(model(data), labels) * weight).mean()
+            ssam_loss += scnd_loss.item()
+            scnd_loss.backward()
             optimizer.second_step(zero_grad=True)
             solution_loss = loss
         else:
@@ -158,7 +185,10 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
     if verbose:
         print('====> Epoch: {} Average loss: {:.8f}'.format(epoch, train_loss / len(train_loader.dataset)))
 
-    return perturbed_loss - solution_loss
+    if opt_name == 'ssam':
+        return perturbed_loss - solution_loss, ssam_loss, sam_loss
+    else:
+        return perturbed_loss - solution_loss
 
 def test(val_loader, model, verbose=True):
     model.eval()

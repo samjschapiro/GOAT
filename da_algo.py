@@ -42,7 +42,10 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
     # TODO: Need to store representation shift here
     representation_weights = []
     representation_biases = []
-    sharpnesses = []      
+    sharpnesses = []
+    if opt_name == 'ssam':
+        sam_losses = []
+        ssam_losses = []
     # start self-training on intermediate domains
     for i in range(steps):
         print(f"--------Training on the {i}th domain--------")
@@ -67,11 +70,21 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
         student = copy.deepcopy(teacher)
 
         final_sharpness = 0
+        sam_loss_inner, ssam_loss_inner = [], []
         for i in range(1, epochs+1):
-            final_sharpness = train(i, trainloader, student, base_opt=base_opt, opt_name=opt_name) 
+            if opt_name == 'ssam':
+                final_sharpness, ssam_loss, sam_loss = train(i, trainloader, student, base_opt=base_opt, opt_name=opt_name) 
+                sam_loss_inner.append(sam_loss)
+                ssam_loss_inner.append(ssam_loss)
+            else:
+                final_sharpness = train(i, trainloader, student, base_opt=base_opt, opt_name=opt_name) 
+
             if i % 5 == 0:
                 test(targetloader, student)
         sharpnesses.append(final_sharpness.cpu().detach().numpy())
+        if opt_name == 'ssam':
+            sam_losses.append(np.mean(sam_loss_inner))
+            ssam_losses.append(np.mean(ssam_loss_inner))
 
         print("------------Performance on the current domain----------")
 
@@ -112,5 +125,7 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
         representation_shifts.append(weight_diff + bias_diff)
         representation_norms.append((np.linalg.norm(representation_weights[idx+1], 2) + np.linalg.norm(representation_biases[idx+1]))**2)
 
-    return st_acc, representation_shifts, sharpnesses, np.mean(representation_norms)
-
+    if opt_name == 'ssam':
+        return st_acc, representation_shifts, sharpnesses, np.mean(representation_norms), ssam_loss, sam_loss
+    else:
+        return st_acc, representation_shifts, sharpnesses, np.mean(representation_norms)

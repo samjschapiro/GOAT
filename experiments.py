@@ -13,6 +13,7 @@ import random
 import os
 import torch.backends.cudnn as cudnn
 import time
+import random
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -33,8 +34,12 @@ def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epoch
 
 
 def run_goat(source_model, all_sets, opt_name, epochs=10):
-    st_acc_all, st_rep_shift_all, st_sharpnesses_all, rep_norm_all = self_train(args, source_model, all_sets, epochs=epochs, opt_name=opt_name, base_opt=args.base_opt)
-    return st_acc_all, st_rep_shift_all, np.mean(st_sharpnesses_all), np.mean(rep_norm_all)
+    if opt_name == 'ssam':
+        st_acc_all, st_rep_shift_all, st_sharpnesses_all, rep_norm_all, ssam_loss, sam_loss = self_train(args, source_model, all_sets, epochs=epochs, opt_name=opt_name, base_opt=args.base_opt)
+        return st_acc_all, st_rep_shift_all, np.mean(st_sharpnesses_all), np.mean(rep_norm_all), np.mean(ssam_loss), np.mean(sam_loss)
+    else:
+        st_acc_all, st_rep_shift_all, st_sharpnesses_all, rep_norm_all = self_train(args, source_model, all_sets, epochs=epochs, opt_name=opt_name, base_opt=args.base_opt)
+        return st_acc_all, st_rep_shift_all, np.mean(st_sharpnesses_all), np.mean(rep_norm_all)
 
 
 def run_portraits_experiment(intermediate_domains, opt_name):
@@ -62,10 +67,20 @@ def run_portraits_experiment(intermediate_domains, opt_name):
     all_sets = get_domains(intermediate_domains)
     all_sets.append(tgt_trainset)
     
-    st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
+    if opt_name == 'ssam':
+        st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all, ssam, sam = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
+    else:
+        st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
 
     with open(f"logs/portraits_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
-        f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n")
+        if opt_name == 'ssam':
+            if os.stat(f"logs/portraits_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+                f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm,ssam_sharpness,sam_sharpness\n")
+            f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}, {round(ssam, 2)}, {round(sam, 2)}\n")
+        else:
+            if os.stat(f"logs/portraits_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+                f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm\n")
+            f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n") 
 
 
 def run_mnist_experiment(target, intermediate_domains, opt_name):
@@ -78,13 +93,23 @@ def run_mnist_experiment(target, intermediate_domains, opt_name):
     all_sets = []
     for i in range(1, intermediate_domains+1):
         all_sets.append(get_single_rotate(False, i*target//(intermediate_domains+1)))
-        print(i*target//(intermediate_domains+1))
+        # print(i*target//(intermediate_domains+1))
     all_sets.append(tgt_trainset)
 
-    st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
+    if opt_name == 'ssam':
+        st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all, ssam, sam = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
+    else:
+        st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
 
-    with open(f"logs/mnist_{target}_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
-        f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n")
+    with open(f"logs/mnist_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
+        if opt_name == 'ssam':
+            if os.stat(f"logs/mnist_{args.target}_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+                f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm,ssam_sharpness,sam_sharpness\n")
+            f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}, {round(ssam, 2)}, {round(sam, 2)}\n")
+        else:
+            if os.stat(f"logs/mnist_{args.target}_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+                f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm\n")
+            f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n") 
 
 
 def run_covtype_experiment(intermediate_domains, opt_name):
@@ -110,10 +135,20 @@ def run_covtype_experiment(intermediate_domains, opt_name):
     all_sets = get_domains(intermediate_domains)
     all_sets.append(tgt_trainset)
 
-    st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
+    if opt_name == 'ssam':
+        st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all, ssam, sam = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
+    else:
+        st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
 
     with open(f"logs/covtype_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
-        f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n")
+        if opt_name == 'ssam':            
+            if os.stat(f"logs/covtype_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+                f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm,ssam_sharpness,sam_sharpness\n")
+            f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}, {round(ssam, 2)}, {round(sam, 2)}\n")
+        else:
+            if os.stat(f"logs/covtype_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+                f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm\n")
+            f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n") 
 
 
 def run_color_mnist_experiment(intermediate_domains, opt_name):
@@ -147,25 +182,49 @@ def run_color_mnist_experiment(intermediate_domains, opt_name):
     all_sets = get_domains(intermediate_domains)
     all_sets.append(tgt_trainset)
 
-    st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
-        
-    with open(f"logs/color_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
-        if os.stat(f"logs/color_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
-            f.write("seed, intermediate_domains, accuracy, rep_shift, sharpness, rep_norm\n")
-        f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n")
+    if opt_name == 'ssam':
+        st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all, ssam, sam = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
+    else:
+        st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
+
+    with open(f"logs/color_mnist_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
+        if opt_name == 'ssam':
+            if os.stat(f"logs/color_mnist_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+                f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm,ssam_sharpness,sam_sharpness\n")
+            f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}, {round(ssam, 2)}, {round(sam, 2)}\n")
+        else:
+            if os.stat(f"logs/color_mnist_opt:{args.optname}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+                f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm\n")
+            f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n") 
 
 def main(args):
     print(args)
-    for i in range(args.number_indep_runs):
-        if args.dataset == "mnist":
-            run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
-        else:
-            eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
-        args.seed +=1
+    if args.dataset == 'all':
+        datasets = ["mnist", "portraits", "covtype", "color_mnist"]
+        for dset in datasets:
+            args.dataset = dset
+            for i in range(args.number_indep_runs):
+                random.seed(i)
+                np.random.seed(i)
+                torch.manual_seed(i)    
+                if args.dataset == "mnist":
+                    run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
+                else:
+                    eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
+    else:
+        for i in range(args.number_indep_runs):
+            random.seed(i)
+            np.random.seed(i)
+            torch.manual_seed(i)    
+            if args.dataset == "mnist":
+                run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
+            else:
+                eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
+            args.seed +=1
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="SAM-GDA-experiments")
-    parser.add_argument("--dataset", choices=["mnist", "portraits", "covtype", "color_mnist"])
+    parser.add_argument("--dataset", choices=["mnist", "portraits", "covtype", "color_mnist"], default='all')
     parser.add_argument("--optname", choices=["sgd", "adam", "sam", "ssam"], default="sam")
     parser.add_argument("--base-opt", choices=["sgd", "adam"], default="sgd")
     parser.add_argument("--intermediate-domains", default=1, type=int)

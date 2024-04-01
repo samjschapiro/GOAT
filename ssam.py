@@ -28,9 +28,7 @@ class SSAM(torch.optim.Optimizer):
 
     @torch.no_grad()
     def first_step(self, zero_grad=False, n_iter=25):
-        grad_norm = self._grad_norm()
         for group in self.param_groups:
-            scale = group["rho"] / (grad_norm + 1e-12)
 
             for p in group["params"]:
                 if p.grad is None: continue
@@ -39,8 +37,8 @@ class SSAM(torch.optim.Optimizer):
                 nabla_l = p.grad
                 beta_init = p.grad
                 if torch.norm(beta_init, 2) != 0:
-                    res = projgrad.minimize(ssam_obj_func, x0=cupy.ravel(cupy.array(beta_init.cpu().numpy())), 
-                                            rho=self.rho, args=(cupy.array(nabla_f.cpu().numpy()), cupy.array(nabla_l.cpu().numpy()), self.lam), 
+                    res = projgrad.minimize(ssam_obj_func, x0=cupy.ravel(cupy.array(beta_init)), 
+                                            rho=self.rho, args=(cupy.array(nabla_f), cupy.array(nabla_l), self.lam), 
                                             maxiters=n_iter, algo=None, disp=False)
                     e_w = res.x
                 else:
