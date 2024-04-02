@@ -6,7 +6,7 @@ This is the official implementation for "Weight-Shift Regularized Sharpness-Awar
 
 ## Abstract
 
-![Main Result](figures/main_result.png "Effect of SAM for GDA")
+![Main Result](algo.jpg "Weight Shift Regularized Gradual Self Training (GST) with SAM")
 
 
 # Install the repo
