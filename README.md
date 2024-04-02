@@ -4,9 +4,14 @@
 
 This is the official implementation for "Weight-Shift Regularized Sharpness-Aware Minimization for Gradual Domain Adaptation". It is largely based on the code from the paper ["Gradual Domain Adaptation: Theory and Algorithms,"](https://arxiv.org/abs/2310.13852) and the ICML 2022 paper ["Understanding gradual domain adaptation: Improved analysis, optimal path and beyond"](https://arxiv.org/abs/2204.08200).
 
-## Abstract
+## Algorithm
 
 ![Main Result](algo.jpg "Weight Shift Regularized Gradual Self Training (GST) with SAM")
+
+
+## Results
+
+TO-DO: Insert table/figure with results
 
 
 # Install the repo
