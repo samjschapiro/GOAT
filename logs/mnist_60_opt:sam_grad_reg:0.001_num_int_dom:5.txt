@@ -1,3 +1,4 @@
 seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm
 3,5,55.09,1.0099999904632568, -0.0, 64.06
 4,5,49.08,0.9900000095367432, -0.009999999776482582, 64.92
+5,5,52.43,1.0399999618530273, 0.0, 63.96
