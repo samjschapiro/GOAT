@@ -32,7 +32,7 @@ def get_labels(dataloader, model, confidence_q=0.1):
     labels = torch.argmax(logits, axis=1) #[indices]
     return labels.cpu().detach().type(torch.int64), list(indices.detach().numpy())
 
-def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
+def self_train(args, source_model, datasets, base_opt, opt_name, grad_reg, epochs=10):
     steps = len(datasets)
     teacher = source_model
     targetset = datasets[-1]
@@ -71,14 +71,20 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
 
         final_sharpness = 0
         sam_loss_inner, ssam_loss_inner = [], []
+        # st_acc = 0
         for i in range(1, epochs+1):
             if opt_name == 'ssam':
-                final_sharpness, ssam_loss, sam_loss = train(i, trainloader, student, base_opt=base_opt, opt_name=opt_name) 
+                final_sharpness, ssam_loss, sam_loss = train(i, trainloader, student, grad_reg=grad_reg, base_opt=base_opt, opt_name=opt_name) 
                 sam_loss_inner.append(sam_loss)
                 ssam_loss_inner.append(ssam_loss)
             else:
-                final_sharpness = train(i, trainloader, student, base_opt=base_opt, opt_name=opt_name) 
+                final_sharpness = train(i, trainloader, student, grad_reg=grad_reg, base_opt=base_opt, opt_name=opt_name) 
 
+            
+            # curr_acc = test(targetloader, student, verbose=False)
+            # st_acc = curr_acc if curr_acc > st_acc else st_acc
+            # if i % 5 == 0:
+            #     print('Best Test Accuracy', st_acc)
             if i % 5 == 0:
                 test(targetloader, student)
         sharpnesses.append(final_sharpness.cpu().detach().numpy())
@@ -91,7 +97,7 @@ def self_train(args, source_model, datasets, base_opt, opt_name, epochs=10):
         test(trainloader, student)
 
         # test on the target domain
-        print("------------Performance on the target domain----------")
+        print("------------Best performance on the target domain----------")
         st_acc = test(targetloader, student)
 
         if i == 0:

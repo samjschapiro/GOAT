@@ -28,7 +28,7 @@ def calculate_modal_val_accuracy(model, valloader):
     return 100 * correct / total
 
 
-def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, verbose=True):
+def train(epoch, train_loader, model, base_opt, opt_name, grad_reg=0.1, lr_scheduler=None, verbose=True):
     def enable_bn(model):
         if isinstance(model, nn.BatchNorm1d):
             model.backup_momentum = model.momentum
@@ -41,12 +41,12 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
     if base_opt == 'sgd':
         base_optimizer = optim.SGD
     elif base_opt == 'adam':
-        base_optimizer = optim.Adam(model.parameters())
+        base_optimizer = optim.Adam
 
     if opt_name == 'sam':
-        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, momentum=0.9, adaptive=bool(opt_name == 'asam'))
+        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, adaptive=bool(opt_name == 'asam'))
     elif opt_name == 'ssam':
-        optimizer = SSAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, momentum=0.9, adaptive=bool(opt_name == 'asam'))
+        optimizer = SSAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, adaptive=bool(opt_name == 'asam'))
 
 
     model.train()
@@ -69,6 +69,9 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
             copy_of_optimizer = SAM(copy_of_net.parameters(), optim.SGD, rho=0.05, lr=1e-3, momentum=0.9, weight_decay=5e-4)
             outputs_1 = copy_of_net(inputs_2)
             outputs_2 = copy_of_net(inputs_3)
+        if opt_name == 'sam':
+            inputs_reg = copy.deepcopy(data)
+            targets_reg = copy.deepcopy(labels)
 
         if opt_name == 'sam' or opt_name == 'ssam' or opt_name == 'asam':
             enable_bn(model)
@@ -114,12 +117,21 @@ def train(epoch, train_loader, model, base_opt, opt_name, lr_scheduler=None, ver
             disable_bn(model)
             if len(x) == 2:
                 scnd_loss = F.cross_entropy(model(data), labels)
+                def loss_comp(x):
+                    return F.cross_entropy(model(x), targets_reg)
             elif len(x) == 3:
                 criterion = nn.CrossEntropyLoss(reduction='none')
                 scnd_loss = (criterion(model(data), labels) * weight).mean()
+                def loss_comp(x):
+                    return (criterion(model(x), targets_reg) * weight).mean()
             ssam_loss += scnd_loss.item()
+            # Penalize the gradient of the loss w.r.t. input
+            nabla_l = torch.autograd.functional.jacobian(loss_comp, inputs_reg)
+            scnd_loss += grad_reg*torch.norm(torch.flatten(nabla_l))#.item() #Default is frobenius norm
             scnd_loss.backward()
+
             optimizer.second_step(zero_grad=True)
+            del scnd_loss
             solution_loss = loss
         else:
             base_optimizer.zero_grad()
