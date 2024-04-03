@@ -202,6 +202,7 @@ def main(args):
         for dset in datasets:
             args.dataset = dset
             for i in range(args.number_indep_runs):
+                args.seed = i
                 random.seed(i)
                 np.random.seed(i)
                 torch.manual_seed(i)    
@@ -210,18 +211,25 @@ def main(args):
                 else:
                     eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
     else:
-        grad_regs = [1, 0.5, 0.1, 0.01, 0.0001]
-        for gr in grad_regs:
-            args.grad_reg = gr
-            for i in range(args.number_indep_runs):
-                random.seed(i)
-                np.random.seed(i)
-                torch.manual_seed(i)    
-                if args.dataset == "mnist":
-                    run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
-                else:
-                    eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
-                args.seed +=1
+        # args.dataset == "mnist"
+        # grad_regs = [0, 1]
+        # for gr in grad_regs:
+        #     args.grad_reg = gr
+        #     for i in range(args.number_indep_runs):
+        #         args.seed = i
+        #         random.seed(i)
+        #         np.random.seed(i)
+        #         torch.manual_seed(i)    
+        #         run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
+        for i in range(20):
+            args.seed = i
+            random.seed(i)
+            np.random.seed(i)
+            torch.manual_seed(i)    
+            grad_regs = [0, 0.1]
+            for gr in grad_regs:
+                args.grad_reg = gr
+                run_covtype_experiment(args.intermediate_domains, args.optname)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="SAM-GDA-experiments")
@@ -231,7 +239,7 @@ if __name__ == '__main__':
     parser.add_argument("--intermediate-domains", default=1, type=int)
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--number-indep-runs", default=1, type=int)
-    parser.add_argument("--rotation-angle", default=45, type=int)
+    parser.add_argument("--rotation-angle", default=60, type=int)
     parser.add_argument("--source-epochs", default=100, type=int)
     parser.add_argument("--intermediate-epochs", default=25, type=int)
     parser.add_argument("--batch-size", default=128, type=int)
