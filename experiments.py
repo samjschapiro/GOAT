@@ -3,9 +3,7 @@ from model import *
 import torch.optim as optim
 from train_model import *
 from util import *
-from ot_util import ot_ablation
 from da_algo import *
-from ot_util import generate_domains
 from dataset import *
 import copy
 import argparse
