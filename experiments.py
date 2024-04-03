@@ -210,7 +210,7 @@ def main(args):
                 else:
                     eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
     else:
-        grad_regs = [0.5, 0]
+        grad_regs = [1, 0.5, 0.1, 0.01, 0.0001]
         for gr in grad_regs:
             args.grad_reg = gr
             for i in range(args.number_indep_runs):

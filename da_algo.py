@@ -4,7 +4,6 @@ import torch.optim as optim
 from train_model import *
 from util import *
 from dataset import *
-from ot_util import *
 from model import *
 import copy
 
