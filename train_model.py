@@ -38,16 +38,24 @@ def train(epoch, train_loader, model, base_opt, opt_name, grad_reg=0.1, lr_sched
         if isinstance(model, nn.BatchNorm1d):
             model.momentum = model.backup_momentum
 
-    if base_opt == 'sgd':
-        base_optimizer = optim.SGD
-    elif base_opt == 'adam':
-        base_optimizer = optim.Adam
+    if opt_name not in ['sgd', 'adam']: # If indeed using sharpness aware optimizer
+        if base_opt == 'sgd':
+            base_optimizer = optim.SGD
+        elif base_opt == 'adam':
+            base_optimizer = optim.Adam
+        if opt_name == 'sam':
+            optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, adaptive=bool(opt_name == 'asam'))
+        elif opt_name == 'ssam':
+            optimizer = SSAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, adaptive=bool(opt_name == 'asam'))
+    else:
+        if opt_name == 'sgd' and base_opt == 'sgd':
+            base_optimizer = optim.SGD
+        elif opt_name == 'adam' and base_opt == 'adam':
+            base_optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
+        
 
-    if opt_name == 'sam':
-        optimizer = SAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, adaptive=bool(opt_name == 'asam'))
-    elif opt_name == 'ssam':
-        optimizer = SSAM(model.parameters(), base_optimizer, lr=1e-3, weight_decay=1e-4, adaptive=bool(opt_name == 'asam'))
 
+    
 
     model.train()
     train_loss = 0

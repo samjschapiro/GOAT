@@ -198,38 +198,41 @@ def run_color_mnist_experiment(intermediate_domains, opt_name):
 def main(args):
     print(args)
     if args.dataset == 'all':
-        datasets = ["mnist", "portraits", "covtype", "color_mnist"]
+        datasets = ["portraits"]
         for dset in datasets:
             args.dataset = dset
-            for i in range(args.number_indep_runs):
+            for i in range(5, 20):
                 args.seed = i
                 random.seed(i)
                 np.random.seed(i)
                 torch.manual_seed(i)    
                 if args.dataset == "mnist":
+                    args.intermediate_domains = 5
                     run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
                 else:
+                    if dset == 'portraits':
+                        args.intermediate_domains = 4
                     eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
-    else:
-        # args.dataset == "mnist"
-        # grad_regs = [0, 1]
-        # for gr in grad_regs:
-        #     args.grad_reg = gr
-        #     for i in range(args.number_indep_runs):
-        #         args.seed = i
-        #         random.seed(i)
-        #         np.random.seed(i)
-        #         torch.manual_seed(i)    
-        #         run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
-        for i in range(20):
-            args.seed = i
-            random.seed(i)
-            np.random.seed(i)
-            torch.manual_seed(i)    
-            grad_regs = [0, 0.1]
-            for gr in grad_regs:
-                args.grad_reg = gr
-                run_covtype_experiment(args.intermediate_domains, args.optname)
+    # else:
+    #     # args.dataset == "mnist"
+    #     # grad_regs = [0, 1]
+    #     # for gr in grad_regs:
+    #     #     args.grad_reg = gr
+    #     #     for i in range(args.number_indep_runs):
+    #     #         args.seed = i
+    #     #         random.seed(i)
+    #     #         np.random.seed(i)
+    #     #         torch.manual_seed(i)    
+    #     #         run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
+    #     for i in range(20):
+    #         args.seed = i
+    #         random.seed(i)
+    #         np.random.seed(i)
+    #         torch.manual_seed(i)    
+    #         grad_regs = [0.1, 0]
+    #         for gr in grad_regs:
+    #             args.grad_reg = gr
+    #             run_covtype_experiment(args.intermediate_domains, args.optname)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="SAM-GDA-experiments")
