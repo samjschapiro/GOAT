@@ -28,7 +28,7 @@ def calculate_modal_val_accuracy(model, valloader):
     return 100 * correct / total
 
 
-def train(epoch, train_loader, model, base_opt, opt_name, grad_reg=0.1, lr_scheduler=None, verbose=True):
+def train(epoch, train_loader, model, base_opt, opt_name, grad_reg=0.1, hes_reg=0.1, lr_scheduler=None, verbose=True):
     def enable_bn(model):
         if isinstance(model, nn.BatchNorm1d):
             model.backup_momentum = model.momentum
@@ -79,6 +79,7 @@ def train(epoch, train_loader, model, base_opt, opt_name, grad_reg=0.1, lr_sched
             outputs_2 = copy_of_net(inputs_3)
         if opt_name == 'sam':
             inputs_reg = copy.deepcopy(data)
+            # inputs_reg2 = copy.deepcopy(data)
             targets_reg = copy.deepcopy(labels)
 
         if opt_name == 'sam' or opt_name == 'ssam' or opt_name == 'asam':
@@ -133,9 +134,7 @@ def train(epoch, train_loader, model, base_opt, opt_name, grad_reg=0.1, lr_sched
                 def loss_comp(x):
                     return (criterion(model(x), targets_reg) * weight).mean()
             ssam_loss += scnd_loss.item()
-            # Penalize the gradient of the loss w.r.t. input
-            nabla_l = torch.autograd.functional.jacobian(loss_comp, inputs_reg)
-            scnd_loss += grad_reg*torch.norm(torch.flatten(nabla_l))#.item() #Default is frobenius norm
+            scnd_loss += (grad_reg*torch.norm(torch.flatten(torch.autograd.functional.jacobian(loss_comp, inputs_reg))))
             scnd_loss.backward()
 
             optimizer.second_step(zero_grad=True)

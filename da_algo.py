@@ -31,14 +31,13 @@ def get_labels(dataloader, model, confidence_q=0.1):
     labels = torch.argmax(logits, axis=1) #[indices]
     return labels.cpu().detach().type(torch.int64), list(indices.detach().numpy())
 
-def self_train(args, source_model, datasets, base_opt, opt_name, grad_reg, epochs=10):
+def self_train(args, source_model, datasets, base_opt, opt_name, grad_reg, hes_reg, epochs=10):
     steps = len(datasets)
     teacher = source_model
     targetset = datasets[-1]
         
     targetloader = DataLoader(targetset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
-    # TODO: Need to store representation shift here
     representation_weights = []
     representation_biases = []
     sharpnesses = []

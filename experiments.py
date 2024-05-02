@@ -25,7 +25,7 @@ def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epoch
 
     # TODO: Add metrics here
     for epoch in range(1, epochs+1):
-        train(epoch, trainloader, model, base_opt=args.base_opt, opt_name=opt_name, grad_reg=args.grad_reg, verbose=verbose)
+        train(epoch, trainloader, model, base_opt=args.base_opt, opt_name=opt_name, grad_reg=args.grad_reg, hes_reg=args.hes_reg, verbose=verbose)
         if epoch % 5 == 0:
             test(testloader, model, verbose=verbose)
     return model
@@ -33,10 +33,10 @@ def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epoch
 
 def run_goat(source_model, all_sets, opt_name, epochs=10):
     if opt_name == 'ssam':
-        st_acc_all, st_rep_shift_all, st_sharpnesses_all, rep_norm_all, ssam_loss, sam_loss = self_train(args, source_model, all_sets, epochs=epochs, opt_name=opt_name, grad_reg=args.grad_reg, base_opt=args.base_opt)
+        st_acc_all, st_rep_shift_all, st_sharpnesses_all, rep_norm_all, ssam_loss, sam_loss = self_train(args, source_model, all_sets, epochs=epochs, opt_name=opt_name, hes_reg=args.hes_reg, grad_reg=args.grad_reg, base_opt=args.base_opt)
         return st_acc_all, st_rep_shift_all, np.mean(st_sharpnesses_all), np.mean(rep_norm_all), np.mean(ssam_loss), np.mean(sam_loss)
     else:
-        st_acc_all, st_rep_shift_all, st_sharpnesses_all, rep_norm_all = self_train(args, source_model, all_sets, epochs=epochs, opt_name=opt_name, grad_reg=args.grad_reg, base_opt=args.base_opt)
+        st_acc_all, st_rep_shift_all, st_sharpnesses_all, rep_norm_all = self_train(args, source_model, all_sets, epochs=epochs, opt_name=opt_name, hes_reg=args.hes_reg, grad_reg=args.grad_reg, base_opt=args.base_opt)
         return st_acc_all, st_rep_shift_all, np.mean(st_sharpnesses_all), np.mean(rep_norm_all)
 
 
@@ -55,7 +55,7 @@ def run_portraits_experiment(intermediate_domains, opt_name):
 
     def get_domains(n_domains):
         domain_set = []
-        n2idx = {0:[], 1:[3], 2:[2,4], 3:[1,3,5], 4:[0,2,4,6], 7:[0,1,2,3,4,5,6]}
+        n2idx = {0:[], 1:[3], 2:[2,4], 3:[1,3,5], 4:[0,2,4,6], 7:[0,1,2,3,4,5,6], 10: range(10), 20: range(20), 50: range(50)}
         domain_idx = n2idx[n_domains]
         for i in domain_idx:
             start, end = i*2000, (i+1)*2000
@@ -70,13 +70,13 @@ def run_portraits_experiment(intermediate_domains, opt_name):
     else:
         st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
 
-    with open(f"logs/portraits_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
+    with open(f"logs/portraits_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
         if opt_name == 'ssam':
-            if os.stat(f"logs/portraits_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            if os.stat(f"logs/portraits_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
                 f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm,ssam_sharpness,sam_sharpness\n")
             f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}, {round(ssam, 2)}, {round(sam, 2)}\n")
         else:
-            if os.stat(f"logs/portraits_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            if os.stat(f"logs/portraits_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
                 f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm\n")
             f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n") 
 
@@ -99,13 +99,13 @@ def run_mnist_experiment(target, intermediate_domains, opt_name):
     else:
         st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
 
-    with open(f"logs/mnist_{target}_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
+    with open(f"logs/mnist_{target}_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
         if opt_name == 'ssam':
-            if os.stat(f"logs/mnist_{target}_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            if os.stat(f"logs/mnist_{target}_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
                 f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm,ssam_sharpness,sam_sharpness\n")
             f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}, {round(ssam, 2)}, {round(sam, 2)}\n")
         else:
-            if os.stat(f"logs/mnist_{target}_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            if os.stat(f"logs/mnist_{target}_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
                 f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm\n")
             f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n") 
 
@@ -138,13 +138,13 @@ def run_covtype_experiment(intermediate_domains, opt_name):
     else:
         st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
 
-    with open(f"logs/covtype_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
+    with open(f"logs/covtype_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
         if opt_name == 'ssam':            
-            if os.stat(f"logs/covtype_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            if os.stat(f"logs/covtype_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
                 f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm,ssam_sharpness,sam_sharpness\n")
             f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}, {round(ssam, 2)}, {round(sam, 2)}\n")
         else:
-            if os.stat(f"logs/covtype_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            if os.stat(f"logs/covtype_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
                 f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm\n")
             f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n") 
 
@@ -185,34 +185,35 @@ def run_color_mnist_experiment(intermediate_domains, opt_name):
     else:
         st_acc_all, st_rep_shift_all, st_sharp_all, rep_norm_all = run_goat(source_model, all_sets, epochs=args.intermediate_epochs, opt_name=opt_name)
 
-    with open(f"logs/color_mnist_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
+    with open(f"logs/color_mnist_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt", "a") as f:
         if opt_name == 'ssam':
-            if os.stat(f"logs/color_mnist_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            if os.stat(f"logs/color_mnist_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
                 f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm,ssam_sharpness,sam_sharpness\n")
             f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}, {round(ssam, 2)}, {round(sam, 2)}\n")
         else:
-            if os.stat(f"logs/color_mnist_opt:{args.optname}_grad_reg:{args.grad_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
+            if os.stat(f"logs/color_mnist_opt:{args.optname}_grad_reg:{args.grad_reg}_hes_reg:{args.hes_reg}_num_int_dom:{args.intermediate_domains}.txt").st_size == 0:
                 f.write(f"seed,intermediate_domains,self_train_accuracy,weight_shift,sharpness,weight_norm\n")
             f.write(f"{args.seed},{intermediate_domains},{round(st_acc_all, 2)},{round(np.mean(st_rep_shift_all), 2)}, {round(st_sharp_all, 2)}, {round(rep_norm_all, 2)}\n") 
 
 def main(args):
     print(args)
     if args.dataset == 'all':
-        datasets = ["portraits"]
+        datasets = ["mnist"]
         for dset in datasets:
-            args.dataset = dset
-            for i in range(5, 20):
-                args.seed = i
-                random.seed(i)
-                np.random.seed(i)
-                torch.manual_seed(i)    
-                if args.dataset == "mnist":
-                    args.intermediate_domains = 5
-                    run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
-                else:
-                    if dset == 'portraits':
-                        args.intermediate_domains = 4
-                    eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
+            for opt in ['sam', 'adam']:
+                args.optname = opt
+                for int_doms in [1, 2, 3]:
+                    args.dataset = dset
+                    args.intermediate_domains = int_doms
+                    for i in range(args.number_indep_runs):
+                        args.seed = i
+                        random.seed(i)
+                        np.random.seed(i)
+                        torch.manual_seed(i)    
+                        if args.dataset == "mnist":
+                            run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
+                        else:
+                            eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
     # else:
     #     # args.dataset == "mnist"
     #     # grad_regs = [0, 1]
@@ -248,6 +249,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch-size", default=128, type=int)
     parser.add_argument("--lr", default=1e-4, type=float)
     parser.add_argument("--grad-reg", default=0.1, type=float)
+    parser.add_argument("--hes-reg", default=1, type=float)
     parser.add_argument("--num-workers", default=4, type=int)
     args = parser.parse_args()
 
