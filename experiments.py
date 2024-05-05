@@ -23,7 +23,6 @@ def get_source_model(args, trainset, testset, n_class, mode, encoder=None, epoch
     trainloader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     testloader = DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
-    # TODO: Add metrics here
     for epoch in range(1, epochs+1):
         train(epoch, trainloader, model, base_opt=args.base_opt, opt_name=opt_name, grad_reg=args.grad_reg, hes_reg=args.hes_reg, verbose=verbose)
         if epoch % 5 == 0:
@@ -91,7 +90,6 @@ def run_mnist_experiment(target, intermediate_domains, opt_name):
     all_sets = []
     for i in range(1, intermediate_domains+1):
         all_sets.append(get_single_rotate(False, i*target//(intermediate_domains+1)))
-        # print(i*target//(intermediate_domains+1))
     all_sets.append(tgt_trainset)
 
     if opt_name == 'ssam':
@@ -123,7 +121,7 @@ def run_covtype_experiment(intermediate_domains, opt_name):
 
     def get_domains(n_domains):
         domain_set = []
-        n2idx = {0:[], 1:[6], 2:[3,7], 3:[2,5,8], 4:[2,4,6,8], 5:[1,3,5,7,9], 10: range(10), 200: range(200)}
+        n2idx = {0:[], 1:[6], 2:[3,7], 3:[2,5,8], 4:[2,4,6,8], 5:[1,3,5,7,9], 10: range(10), 20: range(20), 50: range(50), 100: range(100)}
         domain_idx = n2idx[n_domains]
         for i in domain_idx:
             start, end = i*40000, i*40000 + 2000
@@ -197,43 +195,32 @@ def run_color_mnist_experiment(intermediate_domains, opt_name):
 
 def main(args):
     print(args)
+    def set_seed(seed: int = 42) -> None:
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        os.environ["PYTHONHASHSEED"] = str(seed)
+        print(f"Random seed set as {seed}")
+
     if args.dataset == 'all':
-        datasets = ["mnist"]
+        datasets = ["covtype"]
         for dset in datasets:
-            for opt in ['sam', 'adam']:
+            for opt in ['adam', 'sam']:
                 args.optname = opt
-                for int_doms in [1, 2, 3]:
+                for int_doms in [1, 2, 3, 4, 5, 10]:
                     args.dataset = dset
                     args.intermediate_domains = int_doms
-                    for i in range(args.number_indep_runs):
+                    for i in range(5, 5+args.number_indep_runs):
                         args.seed = i
-                        random.seed(i)
-                        np.random.seed(i)
-                        torch.manual_seed(i)    
+                        set_seed(i)    
                         if args.dataset == "mnist":
                             run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
                         else:
                             eval(f"run_{args.dataset}_experiment({args.intermediate_domains}, '{args.optname}')")
-    # else:
-    #     # args.dataset == "mnist"
-    #     # grad_regs = [0, 1]
-    #     # for gr in grad_regs:
-    #     #     args.grad_reg = gr
-    #     #     for i in range(args.number_indep_runs):
-    #     #         args.seed = i
-    #     #         random.seed(i)
-    #     #         np.random.seed(i)
-    #     #         torch.manual_seed(i)    
-    #     #         run_mnist_experiment(args.rotation_angle, args.intermediate_domains, args.optname)
-    #     for i in range(20):
-    #         args.seed = i
-    #         random.seed(i)
-    #         np.random.seed(i)
-    #         torch.manual_seed(i)    
-    #         grad_regs = [0.1, 0]
-    #         for gr in grad_regs:
-    #             args.grad_reg = gr
-    #             run_covtype_experiment(args.intermediate_domains, args.optname)
+   
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="SAM-GDA-experiments")
@@ -252,5 +239,6 @@ if __name__ == '__main__':
     parser.add_argument("--hes-reg", default=1, type=float)
     parser.add_argument("--num-workers", default=4, type=int)
     args = parser.parse_args()
+
 
     main(args)
