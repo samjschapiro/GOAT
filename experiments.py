@@ -55,9 +55,10 @@ def run_portraits_experiment(intermediate_domains, opt_name):
     def get_domains(n_domains):
         domain_set = []
         n2idx = {0:[], 1:[3], 2:[2,4], 3:[1,3,5], 4:[0,2,4,6], 7:[0,1,2,3,4,5,6], 10: range(10), 20: range(20), 50: range(50)}
-        domain_idx = n2idx[n_domains]
-        for i in domain_idx:
-            start, end = i*2000, (i+1)*2000
+        num_samples = 14000/n_domains
+        # domain_idx = n2idx[n_domains]
+        for i in range(n_domains):
+            start, end = int(i*num_samples), int((i+1)*num_samples)
             domain_set.append(EncodeDataset(inter_x[start:end], inter_y[start:end].astype(int), transforms))
         return domain_set
 
@@ -121,10 +122,10 @@ def run_covtype_experiment(intermediate_domains, opt_name):
 
     def get_domains(n_domains):
         domain_set = []
-        n2idx = {0:[], 1:[6], 2:[3,7], 3:[2,5,8], 4:[2,4,6,8], 5:[1,3,5,7,9], 10: range(10), 20: range(20), 50: range(50), 100: range(100)}
-        domain_idx = n2idx[n_domains]
-        for i in domain_idx:
-            start, end = i*40000, i*40000 + 2000
+        num_samples = 400000/intermediate_domains
+        # domain_idx = n2idx[n_domains]
+        for i in range(intermediate_domains):
+            start, end = int(i*num_samples), int((i+1)*num_samples)
             domain_set.append(EncodeDataset(torch.from_numpy(inter_x[start:end]).float(), inter_y[start:end].astype(int)))
         return domain_set
     
@@ -210,7 +211,7 @@ def main(args):
         for dset in datasets:
             for opt in ['adam', 'sam']:
                 args.optname = opt
-                for int_doms in [1, 2, 3, 4, 5, 10]:
+                for int_doms in [20, 50, 100]:
                     args.dataset = dset
                     args.intermediate_domains = int_doms
                     for i in range(5, 5+args.number_indep_runs):
