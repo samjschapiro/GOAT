@@ -226,7 +226,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="SAM-GDA-experiments")
     parser.add_argument("--dataset", choices=["mnist", "portraits", "covtype", "color_mnist"], default='all')
-    parser.add_argument("--optname", choices=["sgd", "adam", "sam", "ssam"], default="sam")
+    parser.add_argument("--optname", choices=["sgd", "adam", "sam", "asam"], default="sam") # TODO: add variants
     parser.add_argument("--base-opt", choices=["sgd", "adam"], default="adam")
     parser.add_argument("--intermediate-domains", default=1, type=int)
     parser.add_argument("--seed", default=0, type=int)
